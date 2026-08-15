@@ -20,6 +20,10 @@ class AudioWebSocketMiddleware
                    ' Acknowledge their last answer in one sentence, then say goodbye in one sentence.' \
                    ' Two sentences total, then stop.'
 
+  CONTINUE_SIGNAL = '[SISTEM] Interview belum selesai. Jangan menutup wawancara. Ajukan pertanyaan lanjutan berikutnya.'
+
+  MAX_PREMATURE_CLOSE_NUDGES = 3
+
   def initialize(app)
     @app = app
   end
@@ -245,22 +249,23 @@ class AudioWebSocketMiddleware
       # Track whether the AI's last turn ended with a question — drives wrap-up branching.
       state.last_ai_turn_ends_with_question = text.rstrip.end_with?('?')
 
-      # Safety net: if AI said closing words, set coverage_pending and schedule a 15s fallback
-      # finalizer in case on_model_turn_complete never fires (Gemini sometimes skips turnComplete).
+      # Closing-phrase handling. The model is NOT trusted to decide the end: a "thank you"
+      # mid-interview must never end the session. Only finalize when the backend has already
+      # verified all skills covered (coverage_pending). Otherwise nudge the model to continue.
       if !state.ending_scheduled && ai_closing_detected?(text)
-        unless state.coverage_pending
-          Rails.logger.warn("[AudioWS] AI closed without system signal — forcing coverage_pending (session=#{session.id})")
-          state.coverage_pending = true
-        end
-
-        unless state.ending_scheduled
-          EM.add_timer(15) do
-            next if state.ending_scheduled
-            Rails.logger.warn("[AudioWS] on_model_turn_complete delayed — finalizing via closing-phrase fallback (session=#{session.id})")
-            state.ending_scheduled = true
-            send_json(browser_ws, type: 'preparing_to_end', reason: 'all_covered')
-            poll_for_session_end(browser_ws, state, session, attempts: 0)
+        if state.coverage_pending
+          unless state.ending_scheduled
+            EM.add_timer(15) do
+              next if state.ending_scheduled
+              Rails.logger.warn("[AudioWS] on_model_turn_complete delayed — finalizing via closing-phrase fallback (session=#{session.id})")
+              state.ending_scheduled = true
+              send_json(browser_ws, type: 'preparing_to_end', reason: 'all_covered')
+              poll_for_session_end(browser_ws, state, session, attempts: 0)
+            end
           end
+        else
+          Rails.logger.warn("[AudioWS] AI said closing phrase before all skills covered — nudging to continue (session=#{session.id})")
+          nudge_ai_to_continue(state)
         end
       end
 
@@ -698,6 +703,17 @@ class AudioWebSocketMiddleware
     end
   end
 
+  # The model tried to close before all skills were covered — tell it to keep going.
+  # Injected as hidden context; a short plain instruction is far less likely to be
+  # narrated aloud than the old multi-paragraph signal rules. Bounded so a stuck
+  # model doesn't spam injections forever.
+  def nudge_ai_to_continue(state)
+    state.nudge_count = (state.nudge_count || 0) + 1
+    return if state.nudge_count > MAX_PREMATURE_CLOSE_NUDGES
+
+    state.gemini_client&.inject_context(CONTINUE_SIGNAL)
+  end
+
   def mark_warning_if_delivered(state, key, signal)
     return if state.sent_time_warnings.include?(key)
     return unless state.gemini_client.inject_context(signal)
@@ -783,7 +799,7 @@ class AudioWebSocketMiddleware
                   :graceful_end_timer, :time_ceiling_timer,
                   :coverage_end_timer, :coverage_pending,
                   :last_ai_turn_ends_with_question, :wrap_up_injected,
-                  :waiting_for_candidate_response
+                  :waiting_for_candidate_response, :nudge_count
 
     def initialize
       @turn_counter = 0
@@ -793,6 +809,7 @@ class AudioWebSocketMiddleware
       @wrap_up_injected = false
       @last_ai_turn_ends_with_question = false
       @waiting_for_candidate_response = false
+      @nudge_count = 0
       @sent_time_warnings = Set.new
     end
 
