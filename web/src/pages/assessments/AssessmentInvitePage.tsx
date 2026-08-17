@@ -139,6 +139,7 @@ export default function AssessmentInvitePage() {
   const [newSessionCopied, setNewSessionCopied] = useState(false);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [candidateNameInput, setCandidateNameInput] = useState("");
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadSessions = useCallback(async () => {
     const res = await assessmentsApi.getSessions(Number(id));
@@ -152,7 +153,9 @@ export default function AssessmentInvitePage() {
     ]).then(([aRes, sRes]) => {
       setAssessment(aRes.data.assessment);
       setSessions(sRes.data.sessions);
-    }).catch(() => {}).finally(() => setLoading(false));
+    }).catch(() => {
+      setLoadError("Failed to load assessment data.");
+    }).finally(() => setLoading(false));
   }, [id]);
 
   // Poll while any session is live or pending
@@ -201,6 +204,25 @@ export default function AssessmentInvitePage() {
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-32 w-full" />
         <Skeleton className="h-48 w-full" />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-4">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Link to="/assessments" className="hover:text-foreground">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+          Back
+        </div>
+        <div className="border rounded-lg p-8 text-center space-y-3">
+          <p className="text-sm text-destructive">{loadError}</p>
+          <Button variant="outline" size="sm" onClick={() => navigate("/assessments")}>
+            Back to Assessments
+          </Button>
+        </div>
       </div>
     );
   }

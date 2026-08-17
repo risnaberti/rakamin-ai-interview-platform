@@ -56,6 +56,7 @@ export default function LiveMonitorPage() {
   const [assessmentName, setAssessmentName] = useState<string>("");
   const [transcript, setTranscript] = useState<TranscriptTurn[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [ending, setEnding] = useState(false);
   const [endError, setEndError] = useState(false);
   const [sessionActive, setSessionActive] = useState(true);
@@ -90,6 +91,9 @@ export default function LiveMonitorPage() {
         if (turns.length > 0) {
           lastTurnRef.current = turns[turns.length - 1].turn_number;
         }
+      })
+      .catch(() => {
+        setLoadError("Failed to load session data.");
       })
       .finally(() => setLoading(false));
   }, [sessionId]);
@@ -133,6 +137,25 @@ export default function LiveMonitorPage() {
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-48 w-full" />
         <Skeleton className="h-32 w-full" />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-4">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Link to={`/assessments/${id}/invite`} className="hover:text-foreground">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+          Back
+        </div>
+        <div className="border rounded-lg p-8 text-center space-y-3">
+          <p className="text-sm text-destructive">{loadError}</p>
+          <Button variant="outline" size="sm" onClick={() => navigate(`/assessments/${id}/invite`)}>
+            Back to Sessions
+          </Button>
+        </div>
       </div>
     );
   }
