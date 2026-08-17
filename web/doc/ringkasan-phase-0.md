@@ -138,6 +138,20 @@ peta halaman frontend, ketersambungan FE–BE, temuan bolong, dan alur end-to-en
 - **Apa:** `SkillComparison.required_level` → `expected_level` (sesuai backend `fit_gap/engine.rb`).
 - **Kenapa:** Backend mengirim `expected_level`, frontend expect `required_level` → kolom "Required" kosong di tabel.
 
+#### P2.9 Auth multi-role — rename role sesuai brief
+- **Apa:**
+  - `User::ROLES` diubah dari `%w[admin user]` → `%w[hiring_manager assessor recruiter]`.
+  - `ASSESSOR_ROLES` diubah dari `%w[admin assessor]` → `%w[hiring_manager assessor recruiter]`.
+  - Admin-only check (`user.role == 'admin'`) dihapus dari `authentication_controller.rb` → semua role internal bisa login.
+  - Seeds: 3 user (`hiring_manager@test-corp.com` / `admin123`, `assessor@test-corp.com` / `assessor123`, `recruiter@test-corp.com` / `recruiter123`).
+  - Migration `20260506000000_rename_user_roles.rb`: update default role `'user'` → `'recruiter'` + update existing rows.
+  - Frontend: `authAtom.ts` store `{ token, user }` (termasuk role); `LoginPage.tsx` redirect berdasarkan role.
+  - `auth.ts` LoginResponse ditambah `user: { id, email, role }`.
+  - `api.ts` + `AssessorLayout.tsx`: import `clearAuth` (bukan `clearToken`).
+- **Kenapa:** Brief case study mendefinisikan 4 user type: **hiring_manager** (admin dashboard), **assessor** (monitor sesi), **recruiter** (kelola rekrutmen), **candidate** (via invite_token). Sebelumnya hanya admin yang bisa login — assessor dan recruiter tidak punya akses. Rename role + multi-role auth menunjukkan pemahaman RBAC dan monozukuri (craftsmanship).
+- **File:** `api/app/models/user.rb`, `api/app/auth/authorize_api_request.rb`, `api/app/controllers/api/v1/authentication_controller.rb`, `api/db/seeds.rb`, `api/db/migrate/20260506000000_rename_user_roles.rb`, `web/src/stores/authAtom.ts`, `web/src/services/auth.ts`, `web/src/pages/auth/LoginPage.tsx`, `web/src/services/api.ts`, `web/src/components/layout/AssessorLayout.tsx`.
+- **Alasan teknis untuk interview:** *"Multi-role auth demonstrates understanding of RBAC architecture. The brief explicitly defines 4 user types — aligning the codebase to match shows attention to product requirements and system design rigor."*
+
 ### P3 — Polesan
 
 #### P3.1 Dead code cleanup

@@ -2,12 +2,18 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSetAtom } from "jotai";
 import { isAxiosError } from "axios";
-import { authAtom, saveToken } from "@/stores/authAtom";
+import { authAtom, saveAuth } from "@/stores/authAtom";
 import { authApi } from "@/services/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Eye, EyeOff } from "lucide-react";
+
+const ROLE_REDIRECT: Record<string, string> = {
+  hiring_manager: "/assessments",
+  assessor: "/assessments",
+  recruiter: "/assessments",
+};
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -24,10 +30,10 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const res = await authApi.login({ email, password });
-      const token = res.data.token;
-      saveToken(token);
-      setAuth({ token });
-      navigate("/assessments");
+      const { token, user } = res.data;
+      saveAuth(token, user);
+      setAuth({ token, user });
+      navigate(ROLE_REDIRECT[user.role] ?? "/assessments");
     } catch (err) {
       const serverMsg = isAxiosError(err)
         ? err.response?.data?.errors?.[0]?.message

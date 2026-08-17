@@ -1,7 +1,7 @@
 import { Outlet, Link, useNavigate } from "react-router-dom";
 import { useAtomValue, useSetAtom } from "jotai";
 import { tenantAtom } from "@/stores/tenantAtom";
-import { authAtom, clearToken } from "@/stores/authAtom";
+import { authAtom, clearAuth } from "@/stores/authAtom";
 import { Button } from "@/components/ui/button";
 import { LayoutDashboard, ClipboardList, Briefcase, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -19,8 +19,8 @@ export default function AssessorLayout() {
   const location = useLocation();
 
   const handleLogout = () => {
-    clearToken();
-    setAuth({ token: null });
+    clearAuth();
+    setAuth({ token: null, user: null });
     navigate("/login");
   };
 

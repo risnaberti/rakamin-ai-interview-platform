@@ -270,6 +270,9 @@ npx tsc --noEmit         # typecheck
    peringatan perubahan hanya berlaku untuk sesi baru. (P2)
 8. **Backend robustness** — `with_lock` cegah TOCTOU race, retry 2 handle transient API errors,
    empty transcript guard. (P1)
+9. **Auth multi-role** — rename role sesuai brief (hiring_manager/assessor/recruiter),
+   `ASSESSOR_ROLES` expanded, admin-only check dihapus, frontend store role + redirect.
+   Semua role internal bisa login, candidate tetap via invite_token. (P2)
 
 ---
 

@@ -14,7 +14,7 @@ module Api
         end
 
         return json_error('Wrong password', :unauthorized) unless user.authenticate(params[:password])
-        return json_error('Account is not an admin', :unauthorized) unless user.role == 'admin'
+        return json_error('Account is not authorized to log in', :unauthorized) unless User::ROLES.include?(user.role)
 
         scheme = resolve_scheme
         token  = JsonWebToken.encode({ user_id: user.id, role: user.role, scheme: })

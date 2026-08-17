@@ -8,7 +8,7 @@
 #
 # After seeding, use the Rails console to mint a JWT for testing:
 #   bundle exec rails console
-#   > token = JsonWebToken.encode({ user_id: 1, role: 'admin', scheme: 'test-corp' })
+#   > token = JsonWebToken.encode({ user_id: 1, role: 'hiring_manager', scheme: 'test-corp' })
 #   > puts token
 
 puts "== Seeding AI Interview development data =="
@@ -369,30 +369,33 @@ end
 puts "  Done — #{B7_SKILLS.size} skills seeded."
 puts ""
 
-# ── Users (admin login) ────────────────────────────────────────────────────────
+# ── Users (internal login) ────────────────────────────────────────────────────
 #
-# The assessment dashboard requires an authenticated admin. There is no
+# The assessment dashboard requires authenticated internal users. There is no
 # registration flow on the backend (POST /signup is not routed), so we seed
-# one admin account here. Idempotent — safe to re-run.
+# three accounts here (hiring_manager, assessor, recruiter). Idempotent — safe
+# to re-run.
 
 puts ""
 puts "== Seeding users =="
 
-TEST_ADMIN = {
-  email:    "admin@test-corp.com",
-  password: "admin123",
-  role:     "admin"
-}.freeze
+SEED_USERS = [
+  { email: "hiring_manager@test-corp.com", password: "admin123",    role: "hiring_manager" },
+  { email: "assessor@test-corp.com",       password: "assessor123", role: "assessor" },
+  { email: "recruiter@test-corp.com",      password: "recruiter123", role: "recruiter" }
+].freeze
 
-admin = User.find_or_initialize_by(email: TEST_ADMIN[:email])
-admin.password = TEST_ADMIN[:password]
-admin.role = TEST_ADMIN[:role]
+SEED_USERS.each do |attrs|
+  user = User.find_or_initialize_by(email: attrs[:email])
+  user.password = attrs[:password]
+  user.role     = attrs[:role]
 
-if admin.save
-  action = admin.previously_new_record? ? "Created" : "Updated"
-  puts "  #{action}: #{admin.email} (#{admin.role})"
-else
-  puts "  ERROR: #{admin.errors.full_messages.join(', ')}"
+  if user.save
+    action = user.previously_new_record? ? "Created" : "Updated"
+    puts "  #{action}: #{user.email} (#{user.role})"
+  else
+    puts "  ERROR: #{user.errors.full_messages.join(', ')}"
+  end
 end
 
 # ── Print usage instructions ──────────────────────────────────────────────────
@@ -408,9 +411,10 @@ puts "Your test organization:"
 puts "  id     : #{org['id']}"
 puts "  scheme : #{org['scheme']}"
 puts ""
-puts "Admin login (assessment dashboard):"
-puts "  email    : admin@test-corp.com"
-puts "  password : admin123"
+puts "Login accounts (assessment dashboard):"
+puts "  hiring_manager@test-corp.com / admin123    (role: hiring_manager)"
+puts "  assessor@test-corp.com      / assessor123  (role: assessor)"
+puts "  recruiter@test-corp.com     / recruiter123 (role: recruiter)"
 puts ""
 puts "To mint a JWT for testing, open the Rails console:"
 puts ""
@@ -418,12 +422,12 @@ puts "  bundle exec rails console"
 puts ""
 puts "Then run:"
 puts ""
-puts "  # Assessor / admin token (can create assessments, view sessions, etc.)"
-puts "  token = JsonWebToken.encode({ user_id: 1, role: 'admin', scheme: '#{TEST_ORG[:scheme]}' })"
+puts "  # Internal user token (hiring_manager / assessor / recruiter)"
+puts "  token = JsonWebToken.encode({ user_id: 1, role: 'hiring_manager', scheme: '#{TEST_ORG[:scheme]}' })"
 puts "  puts token"
 puts ""
 puts "  # Candidate token (used in WebSocket ?token= param)"
-puts "  token = JsonWebToken.encode({ user_id: 2, role: 'student', scheme: '#{TEST_ORG[:scheme]}' })"
+puts "  token = JsonWebToken.encode({ user_id: 2, role: 'candidate', scheme: '#{TEST_ORG[:scheme]}' })"
 puts "  puts token"
 puts ""
 puts "Then hit the API:"
