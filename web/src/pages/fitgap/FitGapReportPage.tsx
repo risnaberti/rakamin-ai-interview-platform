@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -8,7 +8,7 @@ import ComparisonTable from "@/components/fitgap/ComparisonTable";
 import { portfoliosApi } from "@/services/portfolios";
 import { sessionsApi } from "@/services/sessions";
 import { usePolling } from "@/hooks/usePolling";
-import { ArrowLeft, Download, Loader2, RefreshCw, Zap } from "lucide-react";
+import { ArrowLeft, Download, Loader2, RefreshCw, Zap, AlertCircle } from "lucide-react";
 import type { FitGapReport, Portfolio } from "@/types";
 
 export default function FitGapReportPage() {
@@ -17,6 +17,7 @@ export default function FitGapReportPage() {
     sessionId: string;
     vacancyId: string;
   }>();
+  const navigate = useNavigate();
 
   const [report, setReport] = useState<FitGapReport | null>(null);
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
@@ -24,6 +25,7 @@ export default function FitGapReportPage() {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState<"pdf" | "json" | null>(null);
   const [regenerating, setRegenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchReport = useCallback(async () => {
     if (!portfolio) return;
@@ -50,7 +52,12 @@ export default function FitGapReportPage() {
         const data = res.data as any;
         if (data.portfolio) {
           setPortfolio(data.portfolio);
+        } else {
+          setError("No portfolio found for this session. The interview may not have been completed.");
         }
+      })
+      .catch(() => {
+        setError("Failed to load portfolio.");
       })
       .finally(() => setLoading(false));
   }, [sessionId]);
@@ -98,6 +105,26 @@ export default function FitGapReportPage() {
       <div className="max-w-2xl mx-auto space-y-4">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-48 w-full" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-4">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Link to={`/assessments/${id}/invite`} className="hover:text-foreground">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+          Back
+        </div>
+        <div className="border rounded-lg p-8 text-center space-y-3">
+          <AlertCircle className="h-8 w-8 text-destructive mx-auto" />
+          <p className="text-sm text-destructive">{error}</p>
+          <Button variant="outline" size="sm" onClick={() => navigate(`/assessments/${id}/invite`)}>
+            Back to Sessions
+          </Button>
+        </div>
       </div>
     );
   }

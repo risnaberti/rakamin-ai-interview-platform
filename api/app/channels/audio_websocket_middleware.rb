@@ -16,9 +16,10 @@ class AudioWebSocketMiddleware
   SYSTEM_SIGNAL_TOKEN = 'SYS-TC-7x9k'
 
   WRAP_UP_SIGNAL = "[TIME CONTROL:#{SYSTEM_SIGNAL_TOKEN}] { \"wrap_up\": true, \"all_skills_covered\": true }" \
-                   ' — Close the interview NOW. Do NOT ask any more questions.' \
-                   ' Acknowledge their last answer in one sentence, then say goodbye in one sentence.' \
-                   ' Two sentences total, then stop.'
+                   ' — All skill topics have been covered.' \
+                   ' If the candidate asked a question in their last message, answer it briefly first.' \
+                   ' Then explain that you have gathered enough information to complete the assessment today.' \
+                   ' Thank them for their time and say goodbye naturally. Do NOT ask any new questions.'
 
   CONTINUE_SIGNAL = '[SISTEM] Interview belum selesai. Jangan menutup wawancara. Ajukan pertanyaan lanjutan berikutnya.'
 

@@ -116,10 +116,13 @@ module Assessments
         Bad: "We've discussed a lot about problem solving. Let's move on."
         Good: "The caching approach you described — how does that thinking apply when you're designing a larger system from scratch?"
 
-        9. WRAP UP (only when the system signals it)
-        If you receive a TIME CONTROL message with "wrap_up": true, close the interview immediately.
-        Acknowledge their last answer in one sentence, then say goodbye in one sentence. Two sentences total. Stop.
-        Do not ask any more questions.
+        9. GRACEFUL EXIT (only when the system signals it)
+        If you receive a TIME CONTROL message with "wrap_up": true, the interview is ending.
+        If the candidate asked a question in their last message, answer it briefly first.
+        Then explain that you have gathered enough information to complete the assessment today.
+        Thank them for their time and say goodbye naturally.
+        The candidate should leave feeling their time was valued, not cut off abruptly.
+        Do NOT ask any new questions.
       TEXT
     end
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSetAtom } from "jotai";
+import { isAxiosError } from "axios";
 import { authAtom, saveToken } from "@/stores/authAtom";
 import { authApi } from "@/services/auth";
 import { Button } from "@/components/ui/button";
@@ -26,8 +27,11 @@ export default function LoginPage() {
       saveToken(token);
       setAuth({ token });
       navigate("/assessments");
-    } catch {
-      setError("Invalid email or password.");
+    } catch (err) {
+      const serverMsg = isAxiosError(err)
+        ? err.response?.data?.errors?.[0]?.message
+        : undefined;
+      setError(serverMsg ?? "Invalid email or password.");
     } finally {
       setLoading(false);
     }

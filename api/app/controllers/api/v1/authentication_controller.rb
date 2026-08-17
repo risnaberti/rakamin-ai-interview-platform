@@ -9,9 +9,12 @@ module Api
       def authenticate
         user = User.find_by(email: params[:email].to_s.downcase)
 
-        return json_error('Invalid email or password', :unauthorized) unless user&.authenticate(params[:password])
+        if user.nil?
+          return json_error('Email not registered', :unauthorized)
+        end
 
-        return json_error('Invalid email or password', :unauthorized) unless user.role == 'admin'
+        return json_error('Wrong password', :unauthorized) unless user.authenticate(params[:password])
+        return json_error('Account is not an admin', :unauthorized) unless user.role == 'admin'
 
         scheme = resolve_scheme
         token  = JsonWebToken.encode({ user_id: user.id, role: user.role, scheme: })

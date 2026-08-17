@@ -369,6 +369,32 @@ end
 puts "  Done — #{B7_SKILLS.size} skills seeded."
 puts ""
 
+# ── Users (admin login) ────────────────────────────────────────────────────────
+#
+# The assessment dashboard requires an authenticated admin. There is no
+# registration flow on the backend (POST /signup is not routed), so we seed
+# one admin account here. Idempotent — safe to re-run.
+
+puts ""
+puts "== Seeding users =="
+
+TEST_ADMIN = {
+  email:    "admin@test-corp.com",
+  password: "admin123",
+  role:     "admin"
+}.freeze
+
+admin = User.find_or_initialize_by(email: TEST_ADMIN[:email])
+admin.password = TEST_ADMIN[:password]
+admin.role = TEST_ADMIN[:role]
+
+if admin.save
+  action = admin.previously_new_record? ? "Created" : "Updated"
+  puts "  #{action}: #{admin.email} (#{admin.role})"
+else
+  puts "  ERROR: #{admin.errors.full_messages.join(', ')}"
+end
+
 # ── Print usage instructions ──────────────────────────────────────────────────
 
 org = ActiveRecord::Base.connection.select_one(
@@ -381,6 +407,10 @@ puts ""
 puts "Your test organization:"
 puts "  id     : #{org['id']}"
 puts "  scheme : #{org['scheme']}"
+puts ""
+puts "Admin login (assessment dashboard):"
+puts "  email    : admin@test-corp.com"
+puts "  password : admin123"
 puts ""
 puts "To mint a JWT for testing, open the Rails console:"
 puts ""

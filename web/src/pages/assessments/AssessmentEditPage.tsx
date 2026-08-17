@@ -23,7 +23,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import SkillCard from "@/components/assessment/SkillCard";
 import SkillPicker from "@/components/assessment/SkillPicker";
-import { ArrowLeft, Plus, Loader2 } from "lucide-react";
+import { ArrowLeft, Plus, Loader2, AlertTriangle } from "lucide-react";
 import { assessmentsApi } from "@/services/assessments";
 import { TIME_LIMIT_OPTIONS } from "@/utils/constants";
 import type { AssessmentSkill } from "@/types";
@@ -36,6 +36,7 @@ export default function AssessmentEditPage() {
   const [submitting, setSubmitting] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasEndedSessions, setHasEndedSessions] = useState(false);
 
   const form = useForm<AssessmentFormValues>({
     defaultValues: { name: "", time_limit_min: 45, skills: [] },
@@ -53,6 +54,13 @@ export default function AssessmentEditPage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+
+    assessmentsApi
+      .getSessions(Number(id))
+      .then((res) => {
+        setHasEndedSessions(res.data.sessions.some((s) => s.status === "ended"));
+      })
+      .catch(() => {});
   }, [id, reset]);
 
   const sensors = useSensors(
@@ -108,6 +116,15 @@ export default function AssessmentEditPage() {
         <span className="text-sm text-muted-foreground">/</span>
         <span className="text-sm font-medium">Edit Assessment</span>
       </div>
+
+      {hasEndedSessions && (
+        <div className="mb-6 flex items-start gap-2 rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800 dark:border-yellow-700 dark:bg-yellow-950 dark:text-yellow-200">
+          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+          <span>
+            Some candidates have already completed interviews with this assessment. Changes will only apply to new sessions. Existing coverage maps and portfolios will not be affected.
+          </span>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div className="space-y-1.5">
