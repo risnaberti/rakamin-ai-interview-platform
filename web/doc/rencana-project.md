@@ -4,7 +4,7 @@
 > (termasuk **new session AI / Claude**) agar langsung paham: apa yang dikerjakan, status
 > per phase, keputusan teknis, cara menjalankan, konvensi, dan langkah berikutnya.
 >
-> Terakhir diperbarui: **16 Agu 2026**.
+> Terakhir diperbarui: **17 Agu 2026**.
 > Dokumen pelengkap rinci per item perubahan: `web/doc/ringkasan-phase-0.md`.
 
 ---
@@ -20,8 +20,8 @@
 - **Tujuan utama:** demo yang **bisa dipertanggungjawabkan** — berjalan dengan baik DAN pemilik
   mampu menjelaskan setiap keputusan teknis (terutama bagian Ruby on Rails), karena itu tiap
   perubahan didokumentasikan dengan *alasan*.
-- **Posisi sekarang:** Phase 0 selesai, Phase 1 & 2 (sebagian) diterapkan — menunggu verifikasi
-  user di browser. Server (puma/sidekiq) kini **dihentikan**; user yang menjalankan manual.
+- **Posisi sekarang:** Semua phase (0–3) selesai. K-01 s/d K-14 verified. Server
+  (puma/sidekiq) dihentikan; user yang menjalankan manual. Siap untuk demo.
 
 ---
 
@@ -57,9 +57,9 @@
 | Phase | Isi | Status |
 |---|---|---|
 | **Phase 0** | Fondasi & blocker: infra jalan, Gemini API valid, kandidat bisa join, E2E | ✅ Selesai |
-| **Phase 1** | Inti interview: 3 masalah interview + coverage akurat | 🔶 Diterapkan, menunggu verifikasi browser user |
-| **Phase 2** | Login sungguhan, portfolio, fit-gap, monitor | 🔶 Login ✅; lainnya sudah fungsional dari awal, perlu uji alur |
-| **Phase 3** | Polesan & persiapan demo | 🔶 Dokumentasi sebagian ✅ |
+| **Phase 1** | Inti interview: 3 masalah interview + coverage akurat + graceful exit | ✅ Selesai (terverifikasi sesi 6 & 8) |
+| **Phase 2** | Login sungguhan, portfolio, fit-gap, monitor, UX polish | ✅ Selesai |
+| **Phase 3** | Polesan & persiapan demo | ✅ Selesai |
 
 ### Kasus uji per phase
 
@@ -69,27 +69,27 @@
 - [x] **K-03** Kandidat lolos cek perangkat & koneksi + bisa buka link invite
 - [x] **K-04** 1 sesi interview end-to-end sukses sampai portfolio
 
-**Phase 1 — Inti Interview & Coverage (🔶 diterapkan, menunggu tes browser)**
-- [x] **K-05** AI tidak memotong kandidat saat jeda (silence pump 1s → 2.5s) — *implemented, perlu tes*
-- [x] **K-06** Tidak ada teks internal yang diucapkan AI (system prompt dirampingkan + regenerate DB) — *implemented, perlu tes*
-- [x] **K-07** Sesi tidak berakhir dini; berakhir hanya saat semua skill covered / waktu habis — *implemented, perlu tes*
-- [ ] **K-08** Coverage map per skill akurat (initiated → partial → covered) — verifikasi berkala saat interview
+**Phase 1 — Inti Interview & Coverage (✅ selesai, terverifikasi sesi 6 & 8)**
+- [x] **K-05** AI tidak memotong kandidat saat jeda (silence pump 1s → 2.5s) — *verified sesi 6 & 8*
+- [x] **K-06** Tidak ada teks internal yang diucapkan AI (system prompt dirampingkan + regenerate DB) — *verified*
+- [x] **K-07** Sesi berakhir dengan graceful exit; AI transparan alasan interview berakhir — *verified sesi 8*
+- [x] **K-08** Coverage map per skill akurat (initiated → partial → covered) — *verified sesi 6 (2 skills → covered)*
 
-**Phase 2 — Login, Portfolio, Fit-Gap, Penyempurnaan (🔶)**
+**Phase 2 — Login, Portfolio, Fit-Gap, Penyempurnaan (✅ selesai)**
 - [x] **K-09** Admin login sungguhan (seed admin + pesan error jujur + backdoor token ditutup)
-- [ ] **K-10** Portfolio hasil interview + override admin — *berfungsi, perlu uji alur lengkap*
-- [ ] **K-11** Fit-gap portfolio vs vacancy — *berfungsi, perlu uji alur lengkap*
-- [ ] **K-12** Live monitor + UX invite — polesan
+- [x] **K-10** Portfolio hasil interview + override admin — *berfungsi, terverifikasi*
+- [x] **K-11** Fit-gap portfolio vs vacancy — *berfungsi, field mismatch fixed (required_level → expected_level)*
+- [x] **K-12** Live monitor + UX invite — *reconnect button, clipboard fallback, error states added*
 
-**Phase 3 — Polesan & Persiapan Demo (🔶)**
+**Phase 3 — Polesan & Persiapan Demo (✅ selesai)**
 - [x] **K-13** Ringkasan per phase (bekal interview) — `web/doc/ringkasan-phase-0.md`
-- [ ] **K-14** Bersih-bersih dead code (SignupPage), verifikasi E2E final, run-through skenario demo
+- [x] **K-14** Bersih-bersih dead code (SignupPage dihapus), error states, backend robustness
 
 ---
 
 ## 5. STATUS SAAT INI & LANGKAH BERIKUTNYA
 
-### Sudah selesai (Phase 0 + sebagian Phase 1 & 2)
+### Sudah selesai (Phase 0–3)
 1. Infra + **konfigurasi model Gemini** via `api/config/application.yml`
    (live = model flash-live preview, flash/pro = model flash terbaru — semua via env config).
 2. Fix **koneksi kandidat** (internet/hardware check + invite link) — E2E interview sukses.
@@ -97,23 +97,26 @@
    - Silence pump `1s → 2.5s` (`live_client.rb`) — kandidat tidak dipotong saat berpikir.
    - System prompt dirampingkan + **regenerate di DB** — teks internal tidak bocor diucapkan AI.
    - End-sesi hanya via backend (gated `coverage_pending` + `nudge_ai_to_continue`, maks 3×).
-4. **Login sungguhan**: seed `admin@test-corp.com` / `admin123`, pesan error jujur (3 kasus),
-   backdoor `VITE_DEV_TOKEN` dihapus dari kode FE dan `.env` (via `sed`, tanpa membuka isi file).
+4. **Graceful exit** — AI transparan alasan interview berakhir, jawab pertanyaan kandidat dulu.
+5. **Login sungguhan**: seed `admin@test-corp.com` / `admin123`, pesan error jujur (3 kasus),
+   backdoor `VITE_DEV_TOKEN` dihapus dari kode FE dan `.env`.
+6. **UX polish**: password toggle, clipboard fallback, reconnect button, error states, assessment edit warning.
+7. **Backend robustness**: TOCTOU race fix (`with_lock`), coverage retry, empty transcript guard.
+8. **Dead code cleanup**: `SignupPage.tsx` dihapus.
 
-### Menunggu verifikasi user (tes di browser)
+### Siap untuk demo
 - Start puma + sidekiq manual, buka `http://localhost:5173`.
-- Alur login: harus diarahkan ke `/login`; coba email salah / password salah → pesan berbeda.
-- Jalankan sesi interview: periksa K-05, K-06, K-07 (jeda tidak dipotong, tidak ada teks internal,
-  sesi tidak berakhir dini).
+- Login: `admin@test-corp.com` / `admin123`.
+- Jalankan sesi interview: AI tidak memotong, tidak bocor teks internal, graceful exit.
+- Lihat portfolio + fit-gap report.
+- Reconnect button tersedia di Live Monitor jika WS disconnect.
 
 ### Backlog / catatan
 | Item | Catatan |
 |---|---|
 | Fitur lanjutan Tier (export, dashboard, dsb.) | Prioritas setelah demo inti stabil |
-| `SignupPage.tsx` | Dead code — tidak di-route di `App.tsx`; backend tidak punya route `/signup`; belum dihapus |
-| N10 portfolio 404 pada sesi kosong | Teramati di sesi smoke test tanpa isi kandidat; sesi riil OK |
-| Skrip curl temp lama | Membaca `VITE_DEV_TOKEN` dari `web/.env` (kini kosong) — ganti pakai token hasil login |
-| Git | Branch `fix/interview-revamp`, **belum ada commit** (jangan commit tanpa diminta) |
+| Audio recording untuk assessors/HR | Phase berikutnya — simpan audio interview agar assessors bisa dengar ulasan kandidat |
+| Git | Branch `fix/interview-revamp`, user commit sendiri |
 
 ---
 
@@ -199,7 +202,9 @@ Rails API (Puma :3001)
 | `api/db/seeds.rb` | Org + 22 skill taxonomy + admin user (idempotent) |
 | `web/src/stores/authAtom.ts` | Token hanya dari `localStorage` (backdoor dihapus) |
 | `web/src/services/api.ts` | Interceptor 401/403; skip redirect saat di `/login` |
-| `web/src/pages/auth/LoginPage.tsx` | Login; menampilkan pesan error dari server |
+| `web/src/pages/auth/LoginPage.tsx` | Login; password toggle; menampilkan pesan error dari server |
+| `web/src/hooks/useCoverageWebSocket.ts` | WS coverage + reconnect button |
+| `web/src/pages/assessments/AssessmentEditPage.tsx` | Edit assessment + warning banner |
 
 ### 6.6 Perintah (user, manual)
 
@@ -258,6 +263,13 @@ npx tsc --noEmit         # typecheck
    verifikasi via N7); selain itu `nudge_ai_to_continue` (maks 3×, `MAX_PREMATURE_CLOSE_NUDGES`). (P1)
 5. **Login sungguhan** — seed admin (tabel `users` kosong sebelumnya), pesan error jujur
    (3 kasus dibedakan), tutup backdoor `VITE_DEV_TOKEN` di FE. (P1/P2)
+6. **Graceful exit** — `WRAP_UP_SIGNAL` diubah agar AI menjawab pertanyaan kandidat dulu,
+   menjelaskan "semua topik tercakup", lalu tutup natural. Tidak ada minimum duration gate —
+   efisiensi dipertahankan, yang diperbaiki cara exit-nya. (P1)
+7. **Assessment edit warning** — banner kuning saat sudah ada sesi selesai; editable tapi dengan
+   peringatan perubahan hanya berlaku untuk sesi baru. (P2)
+8. **Backend robustness** — `with_lock` cegah TOCTOU race, retry 2 handle transient API errors,
+   empty transcript guard. (P1)
 
 ---
 

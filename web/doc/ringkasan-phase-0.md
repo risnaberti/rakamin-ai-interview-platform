@@ -114,11 +114,42 @@ peta halaman frontend, ketersambungan FE–BE, temuan bolong, dan alur end-to-en
 - **Apa:** Interceptor HTTP 401/403 hanya redirect ke `/login` jika path saat ini **bukan** `/login`.
 - **Kenapa:** Sebelumnya, login yang gagal (401) memicu `window.location.href = "/login"` → **reload penuh halaman** → pesan error tidak pernah terlihat oleh pengguna.
 
----
+#### P2.3 Password visibility toggle — `web/src/pages/auth/LoginPage.tsx`
+- **Apa:** Tombol `Eye`/`EyeOff` di ujung kanan input password. Toggle antara `type="password"` dan `type="text"`.
+- **Kenapa:** UX — kandidat bisa memastikan password yang diketik benar sebelum submit.
+
+#### P2.4 Clipboard fallback — `web/src/pages/assessments/AssessmentInvitePage.tsx`
+- **Apa:** Fungsi `copyToClipboard()` yang try `navigator.clipboard.writeText()` dulu, fallback ke `document.execCommand('copy')` via temporary textarea.
+- **Kenapa:** `navigator.clipboard` hanya works di secure context (HTTPS/localhost). Di HTTP, copy link undangan gagal silently.
+
+#### P2.5 Reconnect button — `web/src/hooks/useCoverageWebSocket.ts` + `web/src/pages/monitor/LiveMonitorPage.tsx`
+- **Apa:** `useCoverageWebSocket` mengembalikan `reconnect()` function yang reset attempts dan reconnect manual. Live Monitor menampilkan tombol "Reconnect" saat WS disconnect.
+- **Kenapa:** Setelah 3× reconnect gagal, user stuck tanpa cara manual reconnect. Tombol Reconnect memberi kontrol ke admin.
+
+#### P2.6 Assessment edit warning — `web/src/pages/assessments/AssessmentEditPage.tsx`
+- **Apa:** Banner kuning di halaman edit assessment jika sudah ada sesi yang selesai. Pesan: perubahan hanya berlaku untuk sesi baru.
+- **Kenapa:** Admin perlu tahu bahwa mengubah skill tidak mempengaruhi coverage map dan portfolio yang sudah ada.
+
+#### P2.7 Error states — `PortfolioPage.tsx`, `FitGapReportPage.tsx`, `AssessmentInvitePage.tsx`, `LiveMonitorPage.tsx`
+- **Apa:** Semua halaman utama kini punya error state + error UI saat API call gagal atau portfolio tidak ditemukan.
+- **Kenapa:** Sebelumnya `.catch(() => {})` menelan error — halaman menampilkan kosong tanpa penjelasan.
+
+#### P2.8 Fit-gap field mismatch — `web/src/types/index.ts` + `ComparisonTable.tsx`
+- **Apa:** `SkillComparison.required_level` → `expected_level` (sesuai backend `fit_gap/engine.rb`).
+- **Kenapa:** Backend mengirim `expected_level`, frontend expect `required_level` → kolom "Required" kosong di tabel.
 
 ### P3 — Polesan
-- Dokumentasi ini (ringkasan per phase, untuk bekal interview).
-- Catatan: `SignupPage.tsx` adalah **dead code** (tidak di-route di `App.tsx`; backend tidak punya route `/signup`) — belum dihapus (lihat backlog).
+
+#### P3.1 Dead code cleanup
+- **Apa:** `web/src/pages/auth/SignupPage.tsx` dihapus (106 lines, zero references — tidak di-route, backend tidak punya `/signup`). `authApi.signup()` dihapus dari `web/src/services/auth.ts`.
+- **Kenapa:** Dead code membingungkan dan menambah noise di codebase.
+
+#### P3.2 Backend robustness — `api/app/services/sessions/end_handler.rb`, `api/app/workers/coverage_analyzer_worker.rb`, `api/app/services/portfolios/generator.rb`
+- **Apa:**
+  - `EndHandler#call` dibungkus `@session.with_lock` — cegah TOCTOU race condition saat dua proses mengakhiri sesi yang sama.
+  - `CoverageAnalyzerWorker` retry `0` → `2` — handle transient API errors (503, timeout).
+  - `Generator#call` tambah guard empty transcript — return early jika transcript kosong.
+- **Kenapa:** TOCTOU race bisa buat portfolio ganda; retry 0 permanen gagal saat API down sesaat; empty transcript kirim prompt kosong ke Gemini.
 
 ---
 
@@ -165,10 +196,8 @@ Rails API (Puma :3001)
 | Item | Status | Catatan |
 |---|---|---|
 | Fitur lanjutan (Tier lanjutan: export, dashboard, dsb.) | Belum | Prioritas setelah demo inti stabil |
-| `SignupPage.tsx` | Dead code | Tidak di-route; backend tidak punya `/signup`; belum dihapus |
-| N10 portfolio 404 pada sesi kosong | Teramati | Hanya saat sesi tanpa isi kandidat (smoke test); sesi riil OK |
-| Skrip curl lama di temp (baca `VITE_DEV_TOKEN` dari `web/.env`) | Usang | Token kini tak ada di `.env`; ganti dengan token hasil login |
-| Git commit | Belum | Branch `fix/interview-revamp`, belum ada commit |
+| Audio recording untuk assessors/HR | Ide | Phase berikutnya — simpan audio interview agar assessors bisa dengar ulasan kandidat |
+| Git commit | Belum | Branch `fix/interview-revamp`, belum ada commit (user handle sendiri) |
 
 ---
-*Dibuat: 16 Agu 2026. Akan diperbarui per phase berikutnya.*
+*Dibuat: 16 Agu 2026. Diperbarui: 17 Agu 2026.*

@@ -24,7 +24,7 @@ import {
   COVERAGE_STATE_WIDTH,
   COVERAGE_STATE_COLOR,
 } from "@/utils/constants";
-import { ArrowLeft, CheckCircle, Clock, Radio, Zap } from "lucide-react";
+import { ArrowLeft, CheckCircle, Clock, Radio, RefreshCw, Zap } from "lucide-react";
 import type { TranscriptTurn } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -63,7 +63,7 @@ export default function LiveMonitorPage() {
   const lastTurnRef = useRef<number>(0);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const { coverageMap, sessionEnded, sessionEndReason, isConnected } =
+  const { coverageMap, sessionEnded, sessionEndReason, isConnected, reconnect } =
     useCoverageWebSocket(Number(sessionId));
 
   // On session_ended from WS — stop polling, update local state
@@ -186,8 +186,13 @@ export default function LiveMonitorPage() {
             isConnected ? "text-green-600" : "text-muted-foreground"
           )}>
             <Radio className="h-3 w-3" />
-            {isConnected ? "Live" : "Reconnecting..."}
+            {isConnected ? "Live" : "Disconnected"}
           </span>
+          {!isConnected && !sessionEnded && (
+            <Button variant="outline" size="sm" onClick={reconnect}>
+              <RefreshCw className="h-3 w-3 mr-1" /> Reconnect
+            </Button>
+          )}
         </div>
       </div>
 

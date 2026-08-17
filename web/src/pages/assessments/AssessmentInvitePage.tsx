@@ -185,15 +185,30 @@ export default function AssessmentInvitePage() {
     }
   };
 
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+  };
+
   const copyLink = (session: Session, id: number) => {
-    navigator.clipboard.writeText(inviteLinkFor(session.invite_token));
+    copyToClipboard(inviteLinkFor(session.invite_token));
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
   };
 
   const copyNewSessionLink = () => {
     if (!newSession?.invite_token) return;
-    navigator.clipboard.writeText(inviteLinkFor(newSession.invite_token));
+    copyToClipboard(inviteLinkFor(newSession.invite_token));
     setNewSessionCopied(true);
     setTimeout(() => setNewSessionCopied(false), 2000);
   };
