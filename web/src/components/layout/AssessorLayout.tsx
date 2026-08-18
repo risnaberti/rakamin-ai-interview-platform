@@ -30,12 +30,13 @@ export default function AssessorLayout() {
           <div className="flex items-center gap-7">
             <Link to="/assessments" className="flex items-center gap-2.5 flex-shrink-0">
               <div className="w-[30px] h-[30px] bg-[#0F7B6C] rounded-lg flex items-center justify-center">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <img src="/assets/logo.jpeg" alt="Logo" />
+                {/* <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <rect x="1" y="1" width="6" height="6" rx="1.5" fill="white" opacity="0.9"/>
                   <rect x="9" y="1" width="6" height="6" rx="1.5" fill="white" opacity="0.6"/>
                   <rect x="1" y="9" width="6" height="6" rx="1.5" fill="white" opacity="0.6"/>
                   <rect x="9" y="9" width="6" height="6" rx="1.5" fill="white" opacity="0.9"/>
-                </svg>
+                </svg> */}
               </div>
               <span className="font-semibold text-sm text-gray-900">
                 Rakamin AI Interview
