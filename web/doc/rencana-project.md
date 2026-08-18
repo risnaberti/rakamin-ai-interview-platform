@@ -4,7 +4,7 @@
 > (termasuk **new session AI / Claude**) agar langsung paham: apa yang dikerjakan, status
 > per phase, keputusan teknis, cara menjalankan, konvensi, dan langkah berikutnya.
 >
-> Terakhir diperbarui: **17 Agu 2026**.
+> Terakhir diperbarui: **17 Agu 2026 (Phase 4 — Bug Fixes & Resilience)**.
 > Dokumen pelengkap rinci per item perubahan: `web/doc/ringkasan-phase-0.md`.
 
 ---
@@ -20,7 +20,7 @@
 - **Tujuan utama:** demo yang **bisa dipertanggungjawabkan** — berjalan dengan baik DAN pemilik
   mampu menjelaskan setiap keputusan teknis (terutama bagian Ruby on Rails), karena itu tiap
   perubahan didokumentasikan dengan *alasan*.
-- **Posisi sekarang:** Semua phase (0–3) selesai. K-01 s/d K-14 verified. Server
+- **Posisi sekarang:** Semua phase (0–4) selesai. K-01 s/d K-22 verified. Server
   (puma/sidekiq) dihentikan; user yang menjalankan manual. Siap untuk demo.
 
 ---
@@ -60,6 +60,7 @@
 | **Phase 1** | Inti interview: 3 masalah interview + coverage akurat + graceful exit | ✅ Selesai (terverifikasi sesi 6 & 8) |
 | **Phase 2** | Login sungguhan, portfolio, fit-gap, monitor, UX polish | ✅ Selesai |
 | **Phase 3** | Polesan & persiapan demo | ✅ Selesai |
+| **Phase 4** | Bug fixes & resilience: auto-end, leak JSON, retry, speed test, rejoin, time warning | ✅ Selesai |
 
 ### Kasus uji per phase
 
@@ -85,11 +86,21 @@
 - [x] **K-13** Ringkasan per phase (bekal interview) — `web/doc/ringkasan-phase-0.md`
 - [x] **K-14** Bersih-bersih dead code (SignupPage dihapus), error states, backend robustness
 
+**Phase 4 — Bug Fixes & Resilience (✅ selesai)**
+- [x] **K-15** Auto-end saat kandidat pamitan — Branch C fallback inject `WRAP_UP_SIGNAL`
+- [x] **K-16** Transcript leak JSON — regex diperluas + safety check
+- [x] **K-17** AI loop nudge kontradiktif — time-critical guard
+- [x] **K-18** Retry button hard refresh — `window.location.reload()`
+- [x] **K-19** Interview page retry on lost — tombol "Refresh Page"
+- [x] **K-20** Self-host speed test — `/api/v1/speed-test` primary
+- [x] **K-21** Rejoin option on bad internet — 8 reconnection attempts + state "failed"
+- [x] **K-22** Time warning 10 menit — tier `:warn_600` + banner frontend
+
 ---
 
 ## 5. STATUS SAAT INI & LANGKAH BERIKUTNYA
 
-### Sudah selesai (Phase 0–3)
+### Sudah selesai (Phase 0–4)
 1. Infra + **konfigurasi model Gemini** via `api/config/application.yml`
    (live = model flash-live preview, flash/pro = model flash terbaru — semua via env config).
 2. Fix **koneksi kandidat** (internet/hardware check + invite link) — E2E interview sukses.
@@ -98,18 +109,30 @@
    - System prompt dirampingkan + **regenerate di DB** — teks internal tidak bocor diucapkan AI.
    - End-sesi hanya via backend (gated `coverage_pending` + `nudge_ai_to_continue`, maks 3×).
 4. **Graceful exit** — AI transparan alasan interview berakhir, jawab pertanyaan kandidat dulu.
-5. **Login sungguhan**: seed `admin@test-corp.com` / `admin123`, pesan error jujur (3 kasus),
+5. **Login sungguhan**: seed 3 role (hiring_manager/assessor/recruiter), pesan error jujur,
    backdoor `VITE_DEV_TOKEN` dihapus dari kode FE dan `.env`.
 6. **UX polish**: password toggle, clipboard fallback, reconnect button, error states, assessment edit warning.
 7. **Backend robustness**: TOCTOU race fix (`with_lock`), coverage retry, empty transcript guard.
 8. **Dead code cleanup**: `SignupPage.tsx` dihapus.
+9. **Bug fixes (Phase 4)**:
+   - Auto-end saat kandidat pamitan — Branch C fallback inject `WRAP_UP_SIGNAL`.
+   - Transcript leak JSON — regex diperluas + safety check.
+   - AI loop nudge kontradiktif — time-critical guard (jangan nudge kalau `pacing: critical`).
+   - Retry button hard refresh — `window.location.reload()`.
+   - Self-host speed test — `/api/v1/speed-test` primary, httpbin fallback.
+   - Rejoin option — 8 reconnection attempts, state "failed", tombol retry.
+   - Time warning 10 menit — tier `:warn_600` backend + banner frontend.
 
 ### Siap untuk demo
 - Start puma + sidekiq manual, buka `http://localhost:5173`.
-- Login: `admin@test-corp.com` / `admin123`.
+- Login: `admin@test-corp.com` / `admin123` (atau assessor/recruiter).
 - Jalankan sesi interview: AI tidak memotong, tidak bocor teks internal, graceful exit.
+- Kandidat pamitan → AI langsung tutup (auto-end via Branch C).
+- Transcript bersih (tidak ada leak JSON/metadata).
+- Time warning muncul di 10 menit dan 5 menit sisa.
 - Lihat portfolio + fit-gap report.
 - Reconnect button tersedia di Live Monitor jika WS disconnect.
+- Retry button + reconnect option tersedia jika koneksi terputus saat interview.
 
 ### Backlog / catatan
 | Item | Catatan |
@@ -166,7 +189,7 @@ Rails API (Puma :3001)
    `all_covered` / `time_ceiling` / `manual_candidate` / `error` → enqueue
    **`PortfolioGeneratorWorker`** (**N10**).
 7. **`sanitize_output_transcription`** membersihkan kebocoran `[SISTEM]` / `[COVERAGE_MAP]`
-   dari teks yang ditranskrip sebelum disimpan ke DB.
+   dan fragment JSON tanpa wrapper dari teks yang ditranskrip sebelum disimpan ke DB.
 
 **Alur auto-end FE:** `preparing_to_end` → FE `draining_audio` → `POST audio_complete`
 → `sessions_controller.rb:118-129` → `EndHandler(reason: 'all_covered')`.
@@ -273,6 +296,17 @@ npx tsc --noEmit         # typecheck
 9. **Auth multi-role** — rename role sesuai brief (hiring_manager/assessor/recruiter),
    `ASSESSOR_ROLES` expanded, admin-only check dihapus, frontend store role + redirect.
    Semua role internal bisa login, candidate tetap via invite_token. (P2)
+10. **Candidate-initiated close** — kandidat pamitan harus selalu dihormati. Branch C fallback
+    inject `WRAP_UP_SIGNAL` langsung tanpa menunggu `coverage_pending`. Backend boleh override
+    AI closing (untuk cegah premature end), tapi tidak boleh override kandidat. (P4)
+11. **Time-critical nudge guard** — kalau `warn_120` atau `warn_60` sudah terkirim, AI closing
+    langsung finalize. Sinyal waktu adalah source of truth tertinggi untuk pacing. (P4)
+12. **Self-hosted speed test** — health check seharusnya tidak bergantung pada service external
+    yang tidak terkontrol. `/api/v1/speed-test` memberi reliability. (P4)
+13. **Frontend reconnection = backend grace period** — frontend harus try reconnect selama
+    backend masih punya grace period (120 detik), bukan menyerah di 7 detik. (P4)
+14. **Time warning 10 menit** — kandidat butuh waktu untuk wrap up jawaban. Warning di 10
+    menit memberi buffer, di 5 menit memberi urgensi. (P4)
 
 ---
 

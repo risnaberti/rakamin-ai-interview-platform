@@ -38,6 +38,7 @@ export default function InterviewPage() {
   const connectionLostTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [micMuted, setMicMuted] = useState(false);
   const micMutedRef = useRef(false);
+  const [timeWarningMessage, setTimeWarningMessage] = useState<string | null>(null);
 
   // Fetch candidate info
   useEffect(() => {
@@ -88,6 +89,16 @@ export default function InterviewPage() {
     if (reconnectedPromptTimerRef.current) clearTimeout(reconnectedPromptTimerRef.current);
     setReconnectedPrompt(true);
     reconnectedPromptTimerRef.current = setTimeout(() => setReconnectedPrompt(false), 10_000);
+  }, []);
+
+  const handleTimeWarning = useCallback((minutesRemaining: number) => {
+    if (minutesRemaining <= 5) {
+      setTimeWarningMessage(`Sisa waktu ${minutesRemaining} menit. Wawancara akan segera berakhir.`);
+    } else if (minutesRemaining <= 10) {
+      setTimeWarningMessage(`Sisa waktu ${minutesRemaining} menit.`);
+    }
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => setTimeWarningMessage(null), 5000);
   }, []);
 
   const handleTranscript = useCallback((turn: Pick<TranscriptTurn, "speaker" | "text">) => {
@@ -241,6 +252,27 @@ export default function InterviewPage() {
     );
   }
 
+  // ── State G: Failed (connection lost) ────────────────────────────────────
+  if (interviewState === "failed") {
+    return (
+      <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-4">
+        <div className="text-4xl">⚠️</div>
+        <h2 className="text-xl font-semibold">Connection Lost</h2>
+        <p className="text-sm text-muted-foreground">
+          The connection to the interview server was lost.
+          <br />
+          Please check your internet connection and try again.
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 px-6 py-2.5 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors"
+        >
+          Retry Interview
+        </button>
+      </div>
+    );
+  }
+
   // ── States B/C/D/E: Active interview ────────────────────────────────────
   const aiSpeaking = speaker === "ai";
   const candidateSpeaking = speaker === "candidate";
@@ -255,6 +287,7 @@ export default function InterviewPage() {
             totalSeconds={candidateInfo.time_limit_min * 60}
             running={interviewState === "active"}
             onExpired={endInterview}
+            onTimeWarning={handleTimeWarning}
           />
         )}
       </div>
@@ -262,9 +295,17 @@ export default function InterviewPage() {
       {/* Reconnecting banner */}
       {interviewState === "reconnecting" && (
         connectionLostLong ? (
-          <div className="flex items-center gap-2 text-sm bg-red-50 border border-red-200 text-red-800 rounded-lg px-4 py-2.5 mt-2">
-            <span className="animate-pulse">●</span>
-            <span>Connection is taking too long to restore. Please wait, and contact the interviewer if this persists.</span>
+          <div className="flex items-center justify-between gap-2 text-sm bg-red-50 border border-red-200 text-red-800 rounded-lg px-4 py-2.5 mt-2">
+            <div className="flex items-center gap-2">
+              <span className="animate-pulse">●</span>
+              <span>Connection lost. Click the button to refresh and rejoin.</span>
+            </div>
+            <button
+              onClick={() => window.location.reload()}
+              className="ml-2 px-3 py-1 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded transition-colors shrink-0"
+            >
+              Refresh Page
+            </button>
           </div>
         ) : (
           <div className="flex items-center gap-2 text-sm bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg px-4 py-2.5 mt-2">
@@ -272,6 +313,14 @@ export default function InterviewPage() {
             <span>Briefly reconnecting — please wait a moment.</span>
           </div>
         )
+      )}
+
+      {/* Time warning banner */}
+      {timeWarningMessage && (
+        <div className="flex items-center gap-2 text-sm bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-4 py-2.5 mt-2">
+          <span>⏱</span>
+          <span>{timeWarningMessage}</span>
+        </div>
       )}
 
       {/* Reconnected prompt */}

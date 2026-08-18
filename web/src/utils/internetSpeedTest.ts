@@ -100,15 +100,19 @@ async function measureUploadSpeed(): Promise<number> {
     const uploadData = new Blob([new ArrayBuffer(uploadSizeMB * 1024 * 1024)], {
         type: "application/octet-stream",
     });
+    // Self-hosted endpoint first, then fallback to external services
+    const baseUrl = import.meta.env.VITE_API_URL || '';
     const endpoints = SPEED_TEST_UPLOAD_URL
         ? [SPEED_TEST_UPLOAD_URL]
-        : ["https://httpbin.org/post", "https://www.httpbin.org/post", "https://postman-echo.com/post"];
+        : [`${baseUrl}/api/v1/speed_test`, "https://httpbin.org/post", "https://postman-echo.com/post"];
     for (const endpoint of endpoints) {
         try {
             const formData = new FormData();
             formData.append("test", uploadData);
             const start = performance.now();
-            await fetchWithTimeout(endpoint, 15000, { method: "POST", body: formData });
+            const response = await fetchWithTimeout(endpoint, 15000, { method: "POST", body: formData });
+            // Skip non-OK responses (e.g., 503 from httpbin)
+            if (!response.ok) continue;
             const seconds = (performance.now() - start) / 1000;
             return uploadSizeMB / seconds;
         } catch {

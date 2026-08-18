@@ -167,6 +167,62 @@ peta halaman frontend, ketersambungan FE–BE, temuan bolong, dan alur end-to-en
 
 ---
 
+### P4 — Bug Fixes & Resilience (testing-based fixes)
+
+#### P4.1 Auto-end saat kandidat pamitan — `audio_websocket_middleware.rb:199-217`
+- **Apa:** Tambah Branch C di `candidate_closing_handled` — kalau kandidat pamitan tapi belum `coverage_pending` dan belum `wrap_up_injected`, langsung inject `WRAP_UP_SIGNAL` + set `wrap_up_injected = true`.
+- **Kenapa:** Sebelumnya, hanya 2 branch: (A) `wrap_up_injected` → finalize, (B) `coverage_pending` → inject wrap-up. Kalau keduanya false (misal discovered skill masih `initiated`), kandidat pamitan **diabaikan** — interview lanjut terus sampai waktu habis. Di session 17, kandidat bilang "Goodbye" 3× tapi AI tetap nanya.
+- **Mekanisme:** Branch C adalah fallback — inject `WRAP_UP_SIGNAL` langsung ke Gemini tanpa menunggu `coverage_pending`. AI akan menjawab pertanyaan kandidat (jika ada), lalu menutup interview secara natural.
+- **Alasan teknis untuk interview:** *"Candidate-initiated close harus selalu dihormati. Backend boleh override AI closing (untuk cegah premature end), tapi tidak boleh override kandidat yang sudah jelas pamitan."*
+
+#### P4.2 Transcript leak JSON — `audio_websocket_middleware.rb:305-319`
+- **Apa:** Perluas regex `sanitize_output_transcription`:
+  - Regex (3): `\A\s*\{` → `\A\s*[, {]*\{` — tangkap fragment mulai dengan `, "discovered"`.
+  - Regex (4): `\p{Lu}` → `[A-Za-z—]` — tangkap karakter setelah `}]` termasuk em-dash.
+  - Tambahan safety check: kalau teks masih mulai dengan `[,{[]`, discard seluruh turn.
+- **Kenapa:** Di session 17, fragment JSON seperti `, "discovered": [{"label": "Financial Systems"...}]` muncul di transcript karena regex lama tidak match — fragment mulai dengan koma (bukan `{`), dan karakter setelah `}]` adalah em-dash (bukan `\p{Lu}`).
+- **Alasan teknis untuk interview:** *"Sanitize regex harus cukup luas menangkap berbagai format fragment JSON yang mungkin leak, tapi tidak terlalu agresif sehingga menghapus teks kandidat yang valid."*
+
+#### P4.3 AI loop nudge kontradiktif — `audio_websocket_middleware.rb:280-298`
+- **Apa:** Tambah check `time_critical` — kalau `warn_120` atau `warn_60` sudah terkirim, AI closing langsung finalize, bukan di-nudge.
+- **Kenapa:** Sebelumnya, AI closing → `coverage_pending` false → nudge → AI closing lagi → nudge lagi → loop sampai waktu habis. Terjadi karena coverage map bilang "pacing: critical" (wrap up) tapi nudge bilang "lanjut" — dua sinyal berlawanan.
+- **Mekanisme:** `time_critical = state.sent_time_warnings.include?(:warn_120) || state.sent_time_warnings.include?(:warn_60)`. Kalau true, treat sama dengan `coverage_pending` → finalize via timer 15 detik.
+- **Alasan teknis untuk interview:** *"Sinyal waktu adalah source of truth tertinggi untuk pacing. Kalau backend sudah bilang 'waktu kritis', AI harus diizinkan close — nudge di titik ini kontraproduktif."*
+
+#### P4.4 Retry button hard refresh — `HardwareCheck.tsx:178-181`
+- **Apa:** `retryAll()` diubah dari reset React state menjadi `window.location.reload()`.
+- **Kenapa:** Reset state hanya menjalankan ulang speed test yang sama — cached/failed network state tetap ada. Hard refresh membersihkan semua.
+- **Alasan teknis untuk interview:** *"Hardware check melibatkan aspek sistem (camera, mic, internet) yang bisa stale di level browser. Hard refresh adalah satu-satunya cara memastikan state benar-benar bersih."*
+
+#### P4.5 Interview page retry on lost — `InterviewPage.tsx:298-309`
+- **Apa:** Banner connection lost ditambah tombol "Refresh Page" yang call `window.location.reload()`.
+- **Kenapa:** Sebelumnya, banner hanya menampilkan pesan statis — kandidat tidak bisa melakukan apa-apa selain menunggu. Tombol memberi kontrol aktif.
+- **Alasan teknis untuk interview:** *"Candidate experience harus memberi rasa kontrol. 'Please wait' tanpa aksi menimbulkan kecemasan; tombol refresh memberi harapan konkret."*
+
+#### P4.6 Self-host speed test endpoint — `internetSpeedTest.ts:106-120`
+- **Apa:** Upload speed test sekarang pakai self-hosted `/api/v1/speed-test` sebagai primary, httpbin jadi fallback. Tambah `response.ok` check — 503 skip, bukan hitung sebagai sukses.
+- **Kenapa:** httpbin.org sering return 503 (Service Unavailable) atau timeout — menghasilkan speed test yang tidak akurat. Self-hosted endpoint tidak punya rate limit dan selalu tersedia.
+- **Mekanisme:** Rails route `POST /api/v1/speed_test` (sudah ada di `routes.rb:14-17`) accept payload, hitung bytes, return JSON. Frontend pakai `VITE_API_URL` sebagai base URL.
+- **Alasan teknis untuk interview:** *"Health check seharusnya tidak bergantung pada service external yang tidak terkontrol. Self-hosted memberi reliability dan menghilangkan dependency internet untuk testing internet."*
+
+#### P4.7 Rejoin option on bad internet — `useAudioWebSocket.ts:15`, `InterviewPage.tsx:244-258`
+- **Apa:**
+  - `RECONNECT_DELAYS` diperpanjang dari `[1s, 2s, 4s]` → `[1s, 2s, 4s, 8s, 16s, 32s, 64s, 120s]` — total 8 attempts, ~247 detik.
+  - State `"failed"` ditambah ke `InterviewState` union type — tampilan retry screen dengan tombol "Retry Interview".
+  - Tidak lagi panggil `onStateChange("complete")` saat reconnection gagal.
+- **Kenapa:** Frontend lama hanya try 3× (7 detik total) lalu tampil "Interview Complete" — menyesatkan karena sesi belum selesai. Backend punya grace period 120 detik, tapi frontend sudah menyerah di 7 detik.
+- **Alasan teknis untuk interview:** *"Frontend reconnection window harus sinkron dengan backend grace period. Kandidat harus punya waktu yang cukup untuk reconnect, bukan langsung dianggap selesai."*
+
+#### P4.8 Time warning 10 menit — `audio_websocket_middleware.rb:689-701`, `InterviewTimer.tsx`, `InterviewPage.tsx:95-101`
+- **Apa:**
+  - Backend: tambah tier `:warn_600` di `check_time_ceiling` — kirim signal ke Gemini saat sisa waktu ≤10 menit.
+  - Frontend: `InterviewTimer` tambah `isCaution` threshold (≤10 menit, warna amber redup) + `onTimeWarning` callback.
+  - Frontend: `InterviewPage` tampilkan banner amber "Sisa waktu X menit" yang auto-dismiss 5 detik.
+- **Kenapa:** Sebelumnya hanya ada warning di 2 menit dan 1 menit — terlalu lambat untuk memberi kandidat kesempatan wrap up jawaban. 10 menit memberi buffer untuk AI mulai beralih ke topik ringan.
+- **Alasan teknis untuk interview:** *"Time awareness adalah UX penting dalam interview. Kandidat yang tahu waktu tersisa bisa mengatur panjang jawaban — tanpa awareness, mereka terkejut saat interview tiba-tiba berakhir."
+
+---
+
 ## 3. BEKAL ARSITEKTUR (RAILS)
 
 ### 3.1 Stack & alur request

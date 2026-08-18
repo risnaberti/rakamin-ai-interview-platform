@@ -196,6 +196,26 @@ class AudioWebSocketMiddleware
         Rails.logger.error("[AudioWS] Thread crashed (input transcription): #{e.class}: #{e.message}")
       end
 
+      # Candidate closing detection — if candidate says goodbye, handle appropriately:
+      # 1. If wrap-up already injected → finalize immediately
+      # 2. If coverage pending but no wrap-up yet → inject wrap-up signal
+      # 3. Neither (fallback) → inject wrap-up directly so AI closes on next turn
+      if !state.candidate_closing_handled && candidate_closing_detected?(text)
+        state.candidate_closing_handled = true
+        if state.wrap_up_injected && !state.ending_scheduled
+          Rails.logger.info("[AudioWS] Candidate closing detected after wrap-up — finalizing session #{session.id}")
+          EM.schedule { finalize_after_wrap_up(browser_ws, state, session) }
+        elsif state.coverage_pending && !state.wrap_up_injected
+          Rails.logger.info("[AudioWS] Candidate closing detected — injecting wrap-up signal (session=#{session.id})")
+          state.gemini_client&.inject_context(WRAP_UP_SIGNAL)
+          state.wrap_up_injected = true
+        else
+          Rails.logger.info("[AudioWS] Candidate closing detected (no coverage pending) — injecting wrap-up signal (session=#{session.id})")
+          state.gemini_client&.inject_context(WRAP_UP_SIGNAL)
+          state.wrap_up_injected = true
+        end
+      end
+
       send_json(browser_ws, type: 'transcription', speaker: 'candidate',
                             text: text, turn_number: turn_number)
 
@@ -253,8 +273,11 @@ class AudioWebSocketMiddleware
       # Closing-phrase handling. The model is NOT trusted to decide the end: a "thank you"
       # mid-interview must never end the session. Only finalize when the backend has already
       # verified all skills covered (coverage_pending). Otherwise nudge the model to continue.
+      # EXCEPTION: If time is critically low (warn_120 or warn_60 already sent), let the AI
+      # close — nudging at this point creates an infinite loop.
       if !state.ending_scheduled && ai_closing_detected?(text)
-        if state.coverage_pending
+        time_critical = state.sent_time_warnings.include?(:warn_120) || state.sent_time_warnings.include?(:warn_60)
+        if state.coverage_pending || time_critical
           unless state.ending_scheduled
             EM.add_timer(15) do
               next if state.ending_scheduled
@@ -278,14 +301,18 @@ class AudioWebSocketMiddleware
   def sanitize_output_transcription(text)
     text = text.gsub(/\[COVERAGE[_ ]MAP\][\s\S]*?\[\/COVERAGE[_ ]MAP\]/m, '').strip
     text = text.gsub(/\[COVERAGE[_ ]MAP[^\]]*\]/m, '').strip
-    text = text.sub(/\A\s*\{.*?"discovered"\s*:\s*\[.*?\].*?\}\s*/m, '').strip
-    # Skip up to the last }] (or }) immediately followed by an uppercase letter — covers partial JSON echoes.
-    text = text.sub(/\A[\s\S]*?[\}\]]+[\s\}\]]*(?=\p{Lu})/m, '').strip
+    # Match JSON fragments starting with { or , that contain "discovered" key
+    text = text.sub(/\A\s*[, {]*\{.*?"discovered"\s*:\s*\[.*?\].*?\}\s*\]*/m, '').strip
+    # Skip up to the last }] (or }) followed by a letter or em-dash — covers partial JSON echoes.
+    text = text.sub(/\A[\s\S]*?[\}\]]+[\s\}\]]*(?=[A-Za-z—])/m, '').strip
     text = text.gsub(/\[TIME[_ ]CONTROL[^\]]*\][^\n]*/m, '').strip
     text = text.gsub(/pacing=\S+\s*priority_next=\S*/m, '').strip
     text = text.gsub(/\[Start the interview[^\]]*\]/m, '').strip
     text = text.gsub(/\[SESSION RESUME\][^\n]*/m, '').strip
-    text.gsub(/\[SISTEM\][^\n]*/m, '').strip
+    text = text.gsub(/\[SISTEM\][^\n]*/m, '').strip
+    # Final safety: if the text starts with punctuation or JSON-like patterns, discard the whole turn
+    text = '' if text.match?(/\A[\s]*[,{[]/)
+    text
   end
 
   # Fires after the model's turnComplete — safe to tell the frontend to unmute the mic.
@@ -680,6 +707,9 @@ class AudioWebSocketMiddleware
     elsif remaining <= 120 && !state.sent_time_warnings.include?(:warn_120)
       mark_warning_if_delivered(state, :warn_120,
         "[TIME CONTROL:#{SYSTEM_SIGNAL_TOKEN}] { \"time_warning\": true }")
+    elsif remaining <= 600 && !state.sent_time_warnings.include?(:warn_600)
+      mark_warning_if_delivered(state, :warn_600,
+        "[TIME CONTROL:#{SYSTEM_SIGNAL_TOKEN}] { \"time_warning\": true, \"minutes_remaining\": 10 }")
     end
   end
 
@@ -742,9 +772,25 @@ class AudioWebSocketMiddleware
     'wawancara kita sudah selesai'
   ].freeze
 
+  CANDIDATE_CLOSING_PHRASES = [
+    # English
+    "that's all", "that is all", "no more questions", "i don't have any more questions",
+    "nothing else", "i'm good", "i think that's all", "that's everything",
+    "thank you goodbye", "goodbye", "bye bye", "see you",
+    # Indonesian
+    'terima kasih', 'sampai jumpa', 'sudah selesai', 'tidak ada pertanyaan',
+    'cukup sekian', 'itu saja', 'sudah itu saja', 'tidak ada lagi',
+    'secukupnya', 'saya rasa cukup'
+  ].freeze
+
   def ai_closing_detected?(text)
     downcased = text.downcase
     CLOSING_PHRASES.any? { |phrase| downcased.include?(phrase) }
+  end
+
+  def candidate_closing_detected?(text)
+    downcased = text.downcase
+    CANDIDATE_CLOSING_PHRASES.any? { |phrase| downcased.include?(phrase) }
   end
 
   def authenticate_and_load(env, session_id)
@@ -800,7 +846,8 @@ class AudioWebSocketMiddleware
                   :graceful_end_timer, :time_ceiling_timer,
                   :coverage_end_timer, :coverage_pending,
                   :last_ai_turn_ends_with_question, :wrap_up_injected,
-                  :waiting_for_candidate_response, :nudge_count
+                  :waiting_for_candidate_response, :nudge_count,
+                  :candidate_closing_handled
 
     def initialize
       @turn_counter = 0
@@ -811,6 +858,7 @@ class AudioWebSocketMiddleware
       @last_ai_turn_ends_with_question = false
       @waiting_for_candidate_response = false
       @nudge_count = 0
+      @candidate_closing_handled = false
       @sent_time_warnings = Set.new
     end
 
