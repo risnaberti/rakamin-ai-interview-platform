@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,18 +10,14 @@ import {
   Clock,
   ChevronRight,
   ClipboardList,
-  Code,
-  LayoutGrid,
-  Users,
-  Monitor,
-  AlertCircle,
+  Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Assessment } from "@/types";
 
 type FilterStatus = "all" | "completed" | "awaiting" | "failed";
 
-function getAssessmentStatus(a: Assessment): FilterStatus {
+function getDisplayStatus(a: Assessment): FilterStatus {
   if (!a.latest_session) return "awaiting";
   if (a.latest_session.status === "active") return "awaiting";
   if (a.latest_session.status === "ended" && a.latest_session.end_reason === "error") return "failed";
@@ -29,31 +25,13 @@ function getAssessmentStatus(a: Assessment): FilterStatus {
   return "awaiting";
 }
 
-const STATUS_CONFIG = {
-  completed: {
-    icon: Code,
-    iconBg: "bg-teal-50",
-    iconStroke: "text-teal-700",
-    badge: "bg-teal-50 text-teal-700",
-    label: "Completed",
-  },
-  awaiting: {
-    icon: LayoutGrid,
-    iconBg: "bg-blue-50",
-    iconStroke: "text-blue-700",
-    badge: "bg-amber-50 text-amber-700",
-    label: "Awaiting",
-  },
-  failed: {
-    icon: AlertCircle,
-    iconBg: "bg-red-50",
-    iconStroke: "text-red-700",
-    badge: "bg-red-50 text-red-700",
-    label: "Failed",
-  },
+const STATUS_BADGE: Record<FilterStatus, { badge: string; label: string }> = {
+  completed: { badge: "bg-teal-50 text-teal-700", label: "Completed" },
+  awaiting: { badge: "bg-amber-50 text-amber-700", label: "Awaiting" },
+  failed: { badge: "bg-red-50 text-red-700", label: "Failed" },
+  all: { badge: "", label: "" },
 };
 
-const ICON_VARIANTS = [Code, LayoutGrid, Users, Monitor, AlertCircle];
 const ICON_COLORS = [
   { bg: "bg-teal-50", stroke: "text-teal-700" },
   { bg: "bg-blue-50", stroke: "text-blue-700" },
@@ -62,14 +40,12 @@ const ICON_COLORS = [
   { bg: "bg-red-50", stroke: "text-red-700" },
 ];
 
-function getIconForAssessment(name: string) {
+function getIconColor(name: string) {
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
   }
-  const idx = Math.abs(hash) % ICON_VARIANTS.length;
-  const colorIdx = Math.abs(hash) % ICON_COLORS.length;
-  return { Icon: ICON_VARIANTS[idx], ...ICON_COLORS[colorIdx] };
+  return ICON_COLORS[Math.abs(hash) % ICON_COLORS.length];
 }
 
 const FILTERS: { key: FilterStatus; label: string }[] = [
@@ -78,12 +54,6 @@ const FILTERS: { key: FilterStatus; label: string }[] = [
   { key: "awaiting", label: "Awaiting" },
   { key: "failed", label: "Failed" },
 ];
-
-function getStatusBadge(status: FilterStatus) {
-  if (status === "completed") return STATUS_CONFIG.completed;
-  if (status === "failed") return STATUS_CONFIG.failed;
-  return STATUS_CONFIG.awaiting;
-}
 
 function MetaDot() {
   return <span className="w-1 h-1 rounded-full bg-gray-300 flex-shrink-0" />;
@@ -94,44 +64,51 @@ export default function AssessmentListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [filter, setFilter] = useState<FilterStatus>("all");
+  const [roleTitleSearch, setRoleTitleSearch] = useState("");
+  const [totalCount, setTotalCount] = useState(0);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const navigate = useNavigate();
 
+  const fetchAssessments = useCallback(
+    async (status: FilterStatus, roleTitle: string) => {
+      setLoading(true);
+      setError(false);
+      try {
+        const params: { status?: string; role_title?: string } = {};
+        if (status !== "all") params.status = status;
+        if (roleTitle.trim()) params.role_title = roleTitle.trim();
+        const res = await assessmentsApi.list(1, params);
+        setAssessments(res.data.assessments);
+        setTotalCount(res.data.meta.total_count);
+      } catch {
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
   useEffect(() => {
-    assessmentsApi
-      .list()
-      .then((res) => setAssessments(res.data.assessments))
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
-  }, []);
+    fetchAssessments(filter, roleTitleSearch);
+  }, [filter, fetchAssessments]);
 
-  const assessmentsWithStatus = useMemo(
-    () => assessments.map((a) => ({ ...a, _status: getAssessmentStatus(a) })),
-    [assessments]
-  );
-
-  const filtered = useMemo(
-    () =>
-      filter === "all"
-        ? assessmentsWithStatus
-        : assessmentsWithStatus.filter((a) => a._status === filter),
-    [assessmentsWithStatus, filter]
-  );
-
-  const counts = useMemo(() => {
-    const c = { all: 0, completed: 0, awaiting: 0, failed: 0 };
-    for (const a of assessmentsWithStatus) c[a._status]++;
-    c.all = assessmentsWithStatus.length;
-    return c;
-  }, [assessmentsWithStatus]);
+  const handleRoleTitleChange = (value: string) => {
+    setRoleTitleSearch(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      fetchAssessments(filter, value);
+    }, 300);
+  };
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold">Assessments</h1>
-          {!loading && assessments.length > 0 && (
+          {!loading && (
             <p className="text-sm text-muted-foreground mt-0.5">
-              {assessments.length} assessment{assessments.length !== 1 ? "s" : ""}
+              {totalCount} assessment{totalCount !== 1 ? "s" : ""}
             </p>
           )}
         </div>
@@ -165,39 +142,40 @@ export default function AssessmentListPage() {
         />
       ) : (
         <>
-          <div className="flex gap-1.5 flex-wrap">
-            {FILTERS.map((f) => (
-              <button
-                key={f.key}
-                onClick={() => setFilter(f.key)}
-                className={cn(
-                  "inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium border transition-colors",
-                  filter === f.key
-                    ? "bg-teal-50 text-teal-700 border-teal-200"
-                    : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50 hover:text-gray-800"
-                )}
-              >
-                {f.label}
-                {counts[f.key] > 0 && (
-                  <span
-                    className={cn(
-                      "inline-flex items-center justify-center w-[18px] h-[18px] rounded-full text-[10px] font-semibold",
-                      filter === f.key
-                        ? "bg-teal-600 text-white"
-                        : "bg-gray-200 text-gray-600"
-                    )}
-                  >
-                    {counts[f.key]}
-                  </span>
-                )}
-              </button>
-            ))}
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1 max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search by role title..."
+                value={roleTitleSearch}
+                onChange={(e) => handleRoleTitleChange(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+              />
+            </div>
+            <div className="flex gap-1.5 flex-wrap">
+              {FILTERS.map((f) => (
+                <button
+                  key={f.key}
+                  onClick={() => setFilter(f.key)}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium border transition-colors",
+                    filter === f.key
+                      ? "bg-teal-50 text-teal-700 border-teal-200"
+                      : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50 hover:text-gray-800"
+                  )}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="flex flex-col gap-2">
-            {filtered.map((a) => {
-              const { Icon, bg, stroke } = getIconForAssessment(a.name);
-              const statusCfg = getStatusBadge(a._status);
+            {assessments.map((a) => {
+              const { bg, stroke } = getIconColor(a.name);
+              const ds = getDisplayStatus(a);
+              const statusCfg = STATUS_BADGE[ds];
 
               return (
                 <div
@@ -211,7 +189,7 @@ export default function AssessmentListPage() {
                       bg
                     )}
                   >
-                    <Icon className={cn("w-5 h-5", stroke)} />
+                    <ClipboardList className={cn("w-5 h-5", stroke)} />
                   </div>
 
                   <div className="flex-1 min-w-0">

@@ -9,9 +9,9 @@ export interface AssessmentPayload {
 }
 
 export const assessmentsApi = {
-  list: (page = 1) =>
+  list: (page = 1, filters?: { status?: string; role_title?: string }) =>
     api.get<{ assessments: Assessment[]; meta: PaginationMeta }>("/assessments", {
-      params: { page },
+      params: { page, ...filters },
     }),
 
   get: (id: number) =>

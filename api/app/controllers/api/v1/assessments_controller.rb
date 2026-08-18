@@ -9,9 +9,11 @@ module Api
 
       # GET /api/v1/assessments
       def index
-        assessments = paginate(
-          Assessment.includes(:sessions).order(created_at: :desc)
-        )
+        scope = Assessment.includes(:sessions).order(created_at: :desc)
+        scope = filter_by_status(scope) if query_params[:status].present?
+        scope = scope.where("name ILIKE ?", "%#{query_params[:role_title]}%") if query_params[:role_title].present?
+
+        assessments = paginate(scope)
 
         json_response(
           assessments: assessments.map(&method(:assessment_json)),
@@ -124,6 +126,33 @@ module Api
           total_count:  collection.total_count,
           per_page:     collection.limit_value
         }
+      end
+
+      def filter_by_status(scope)
+        status = query_params[:status].to_s.downcase
+        return scope unless %w[completed awaiting failed].include?(status)
+
+        scope.joins(<<-SQL.squish)
+          LEFT JOIN LATERAL (
+            SELECT s.status, s.end_reason
+            FROM ai_interview.sessions s
+            WHERE s.assessment_id = assessments.id
+            ORDER BY s.created_at DESC
+            LIMIT 1
+          ) latest ON TRUE
+        SQL
+        .where(status_sql(status))
+      end
+
+      def status_sql(status)
+        case status
+        when "completed"
+          "latest.status = 'ended' AND latest.end_reason != 'error'"
+        when "failed"
+          "latest.status = 'ended' AND latest.end_reason = 'error'"
+        when "awaiting"
+          "(latest.id IS NULL OR latest.status IN ('active', 'pending'))"
+        end
       end
     end
   end

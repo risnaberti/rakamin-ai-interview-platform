@@ -237,6 +237,94 @@ Sebelum polish, frontend memiliki beberapa masalah:
 - **Sebelum:** Plain forms tanpa card wrapper, tanpa section titles, basic skill widget dengan card per skill
 - **Sesudah:** Card-based forms dengan section dividers, hints, polished skill widget — sesuai design reference
 
+### P3.20 Vacancy List Page Revamp
+
+- **File:** `web/src/pages/vacancies/VacancyListPage.tsx`
+- **Apa:**
+  - Colored card icons (40x40, rounded-lg) berdasarkan hash nama role — 5 warna (teal, blue, purple, amber, red)
+  - Skill count chip di setiap card (`X skills`)
+  - Meta text: "X vacancies" di bawah judul halaman
+  - Card styling: `bg-white border border-gray-200 rounded-xl px-4 py-3.5` — konsisten dengan AssessmentListPage
+  - Deterministic icon color selection berdasarkan role_title (hash function)
+  - Hapus dependency `Card`/`CardContent` — menggunakan plain div dengan styling konsisten
+- **Sebelum:** Plain cards dengan `Card`/`CardContent` component, Briefcase icon tanpa warna, tanpa skill count, tanpa meta text
+- **Sesudah:** Cards dengan colored icon backgrounds, skill count chips, meta text — konsisten dengan AssessmentListPage
+
+### P3.21 Assessment Filter — BE-Side + Role Title Search
+
+- **File:** `api/app/controllers/api/v1/assessments_controller.rb`, `web/src/services/assessments.ts`, `web/src/pages/assessments/AssessmentListPage.tsx`
+- **Backend:**
+  - `filter_by_status(scope)` — LATERAL JOIN ke sessions terbaru, compute status via SQL:
+    - `completed`: `latest.status = 'ended' AND latest.end_reason != 'error'`
+    - `failed`: `latest.status = 'ended' AND latest.end_reason = 'error'`
+    - `awaiting`: `latest.id IS NULL OR latest.status IN ('active','pending')`
+  - `?role_title=Senior` → `WHERE name ILIKE '%Senior%'` (case-insensitive search)
+  - Filter params dikombinasikan dengan pagination (Kaminari)
+- **Frontend:**
+  - Hapus `getAssessmentStatus()` — BE sudah compute status
+  - Hapus `useMemo` untuk `assessmentsWithStatus`, `filtered`, `counts` — BE handle filtering
+  - `useEffect` re-fetch saat filter atau role_title berubah
+  - Role title search input dengan debounce 300ms
+  - Filter pills sekarang trigger BE request, bukan client-side filter
+- **Sebelum:** Filter client-side — semua assessment di-load, FE filter di browser
+- **Sesudah:** Filter BE-side — hanya data yang relevan di-load, role_title search membantu user menemukan assessment yang dicari
+
+### P3.22 Portfolio Results Page Revamp
+
+**File:** `web/src/pages/portfolio/PortfolioPage.tsx`, `web/src/components/portfolio/SkillPortfolioCard.tsx`
+
+**Design:** Two-column layout `grid-cols-[1fr_280px]` dengan `max-w-[1060px]`
+
+- **Skill result cards:** Level badge 52x52 colored box (teal/amber/red), confidence dot + uppercase label, level scale 5 pips (teal filled, blue expected marker), override button
+- **Evidence quotes:** `"` quote mark (serif) + italic text, sourced directly from transcript
+- **Competency summary:** Separate section below evidence
+- **Low confidence warning:** Amber left-border banner + AlertTriangle icon
+- **Sidebar:** Overall score ring (SVG circle), skill summary with horizontal bars, session info table, Fit/Gap selector with "View Fit/Gap Report →" CTA
+- **Action buttons:** Transcript, PDF, JSON in header
+- **P3.25 Error states:** Amber warning banner with friendly error message + retry, "Analysis not ready yet" empty state with retry + view transcript
+- **Generating state:** Centered spinner with "about 2 minutes" time estimate
+
+**Rationale:** Assessor needs to see all skill results in one glance without excessive scrolling. The two-column layout keeps sidebar (score, summary, actions) always visible while reviewing skills.
+
+### P3.23 Fit/Gap Report Page Revamp
+
+**File:** `web/src/pages/fitgap/FitGapReportPage.tsx`, `web/src/components/fitgap/ComparisonTable.tsx`
+
+**Design:** Two-column layout `grid-cols-[1fr_260px]` dengan `max-w-[1040px]`
+
+- **Skill comparison:** Horizontal row per skill with Required chip, Candidate chip, ResultBadge (colored: teal/green match, red gap, blue exceed), GapChip ("−2 levels")
+- **Table footer:** Summary counts: Match N skills, Gap N skills, Exceeds N skills
+- **Culture & competency card:** Narrative text in bordered card
+- **Discovered skills card:** Zap icon + amber label for skills not in vacancy
+- **Sidebar:** Verdict card (score ring SVG + score% + badge + progress bar + summary rows), Recommendation card (dynamic text based on score), "← Back to portfolio" CTA
+- **Action buttons:** Regenerate, PDF, JSON in header
+
+**Rationale:** The fit/gap verdict (score + recommendation) is the primary decision-making element. Placing it in a persistent sidebar ensures the assessor always sees it while reviewing individual skill comparisons.
+
+### P3.24 Transcript Page Revamp
+
+**File:** `web/src/pages/transcript/TranscriptPage.tsx`
+
+**Design:** `max-w-[740px]` centered, clean reading width
+
+- **Left-border turns:** Each turn has a 1.5px left border — teal (`bg-teal-500`) for AI, blue (`bg-blue-400`) for candidate
+- **Speaker labels:** Uppercase tracking-widest — `AI INTERVIEWER` (teal) / `CANDIDATE` (blue)
+- **Content:** `text-sm text-gray-700 leading-relaxed whitespace-pre-wrap`
+- **Error/empty states:** Centered friendly messages
+
+**Rationale:** Transcripts are read linearly. The left-border approach provides immediate visual separation between speakers without the heaviness of full card backgrounds, reducing cognitive load during long reads.
+
+### P3.25 Portfolio Error & Empty States
+
+**File:** `web/src/pages/portfolio/PortfolioPage.tsx` (included in P3.22)
+
+- **Error banner:** Amber background + `RefreshCw` icon + friendly message + retry button
+- **Technical detail:** Shown only when `generation_error` is a meaningful string, with amber-600 text
+- **Empty state:** 52x52 gray icon + "Analysis not ready yet" heading + description + two CTAs: "View transcript" + "Retry now"
+- **Generating state:** Centered teal spinner + "Generating portfolio..." + "about 2 minutes" estimate
+
+**Rationale:** Portfolio generation can fail (rate limits, timeouts). A friendly error state with retry prevents user frustration. The empty state keeps the user informed while waiting for generation to complete.
+
 ---
 
 ## 3. ALASAN & DAMPAK
@@ -371,6 +459,26 @@ Sebelum polish, frontend memiliki beberapa masalah:
 - **Professionalism:** Branded logo menunjukkan investment dalam product
 - **Consistency:** Logo yang sama di semua halaman memperkuat identity
 
+### 3.16 Mengapa Vacancy List Perlu Colored Icons & Skill Count
+
+**Alasan:** Vacancy list page dan assessment list page harus terlihat konsisten karena keduanya adalah halaman utama yang dilihat assessor. Tanpa colored icons, vacancy cards terlihat plain dan sulit dibedakan sekilas. Skill count memberikan quick overview tanpa perlu buka detail.
+
+**Dampak:**
+- **Visual consistency:** Kedua list page (assessments + vacancies) sekarang memiliki pola yang sama — colored icons, rounded cards, meta info
+- **Visual scanning:** Colored icons membedakan vacancy dalam < 100ms
+- **Quick overview:** Skill count chip memberikan info tanpa navigasi ke detail
+- **Professionalism:** Konsistensi antar halaman menunjukkan craftsmanship (Monozukuri)
+
+### 3.17 Mengapa Filter Perlu Dipindah ke BE
+
+**Alasan:** Client-side filter memaksa FE load semua data sebelum bisa filter. Ini tidak scalable — kalau ada 1000 assessments, semuanya di-load ke browser dulu. BE-side filter lebih efisien karena hanya data yang relevan yang di-transfer. Selain itu, role title search membantu user menemukan assessment spesifik tanpa scroll.
+
+**Dampak:**
+- **Performance:** Hanya data yang relevan yang di-load (transfer lebih kecil)
+- **Scalability:** Filter tetap cepat meskipun data banyak
+- **UX:** Role title search membantu user menemukan assessment yang dicari
+- **Best practice:** BE handle data logic, FE handle display — separation of concerns
+
 ### 3.15 Mengapa Form Perlu Card Wrapper & Section Titles
 
 **Alasan:** Forms tanpa visual container terlihat "raw" dan tidak terstruktur. Section titles membantu user memahami flow form (apa yang harus diisi dulu).
@@ -394,10 +502,20 @@ Sebelum polish, frontend memiliki beberapa masalah:
 - **Skill duplicate prevention** → tidak ada skill ganda yang membingungkan
 - **Assessment list dengan colored icons** → identifikasi status sekilas tanpa baca text
 - **Filter pills** → fokus pada status tertentu tanpa scroll
+- **Role title search** → cari assessment spesifik tanpa scroll
 - **Assessment detail two-column** → stats + candidates + sidebar dalam satu viewport
 - **Candidate table dengan avatars** → identifikasi candidate lebih personal
+- **Vacancy list dengan colored icons** → identifikasi vacancy sekilas, konsisten dengan assessment list
+- **Vacancy skill count chip** → tahu jumlah skills tanpa buka detail
 - **Branded navbar logo** → aplikasi terasa "serius" dan "ready"
 - **Form card wrapper** → form terstruktur dan mudah diikuti
+- **Portfolio two-column layout** → skill cards + sidebar sejajar, tidak perlu scroll
+- **Skill result card dengan level scale** → visualisasi level kandidat vs expected
+- **Evidence quotes** → quote asli dari transcript, bukan abstraksi AI
+- **Fit/Gap verdict sidebar** → skor fit + badge + rekomendasi dalam satu glance
+- **Transcript left-border turns** → identifikasi speaker tanpa baca label
+- **Transcript max-width 740px** → reading width yang nyaman
+- **Fit/Gap error states yang friendly** → banner + retry, bukan blank screen
 
 ### Untuk Candidate
 - **Interview page yang polished** → merasa dihargai, bukan "cuma test"
@@ -414,4 +532,4 @@ Sebelum polish, frontend memiliki beberapa masalah:
 
 ---
 
-*Dibuat: 17 Agu 2026. Diperbarui: 18 Agu 2026 (UI Revamp: P3.16–P3.19).*
+*Dibuat: 17 Agu 2026. Diperbarui: 18 Agu 2026 (UI Revamp: P3.16–P3.25).*

@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { assessmentsApi } from "@/services/assessments";
+import { sessionsApi } from "@/services/sessions";
 import { LEVEL_LABELS } from "@/utils/constants";
 import {
   Copy,
@@ -28,6 +29,7 @@ import {
   TrendingUp,
   Info,
   FileText,
+  ExternalLink,
 } from "lucide-react";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import EmptyState from "@/components/ui/empty-state";
@@ -134,6 +136,10 @@ export default function AssessmentInvitePage() {
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [candidateNameInput, setCandidateNameInput] = useState("");
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [coverageSummary, setCoverageSummary] = useState<{
+    covered: number;
+    total: number;
+  } | null>(null);
 
   const loadSessions = useCallback(async () => {
     const res = await assessmentsApi.getSessions(Number(id));
@@ -161,6 +167,39 @@ export default function AssessmentInvitePage() {
     const interval = setInterval(loadSessions, 5000);
     return () => clearInterval(interval);
   }, [sessions, loadSessions]);
+
+  // Fetch coverage for completed sessions to compute "skills covered" stat
+  useEffect(() => {
+    const completedSessions = sessions.filter(
+      (s) => s.status === "ended" && s.end_reason !== "error"
+    );
+    if (completedSessions.length === 0) {
+      setCoverageSummary(null);
+      return;
+    }
+
+    const totalSkills = assessment?.skills?.length ?? 0;
+    if (totalSkills === 0) {
+      setCoverageSummary({ covered: 0, total: 0 });
+      return;
+    }
+
+    Promise.allSettled(
+      completedSessions.map((s) => sessionsApi.getCoverage(s.id))
+    ).then((results) => {
+      const coveredSkills = new Set<string>();
+      for (const r of results) {
+        if (r.status === "fulfilled") {
+          for (const sk of r.value.data.skills ?? []) {
+            if (sk.state === "covered" || sk.state === "partial") {
+              coveredSkills.add(sk.skill_label);
+            }
+          }
+        }
+      }
+      setCoverageSummary({ covered: coveredSkills.size, total: totalSkills });
+    });
+  }, [sessions, assessment]);
 
   const stats = useMemo(() => {
     const total = sessions.length;
@@ -379,26 +418,36 @@ export default function AssessmentInvitePage() {
         </div>
         <div className="bg-white border border-gray-200 rounded-xl px-4 py-3.5">
           <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-1">
-            Completion rate
+            Completed
           </div>
           <div className="text-2xl font-semibold text-gray-900">
-            {stats.rate}
+            {stats.completed}
             <span className="text-base font-normal text-gray-400">%</span>
           </div>
           <div className="text-xs text-gray-500 mt-0.5">
-            {stats.completed} of {stats.total} finished
+            {stats.rate}% completion rate
           </div>
         </div>
         <div className="bg-white border border-gray-200 rounded-xl px-4 py-3.5">
           <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-1">
-            Skills assessed
+            Skills covered
           </div>
           <div className="text-2xl font-semibold text-gray-900">
-            {assessment?.skills?.length ?? 0}
+            {coverageSummary ? (
+              <>
+                {coverageSummary.covered}
+                <span className="text-base font-normal text-gray-400">
+                  /{coverageSummary.total}
+                </span>
+              </>
+            ) : (
+              <span className="text-gray-400 text-lg">—</span>
+            )}
           </div>
           <div className="text-xs text-gray-500 mt-0.5">
-            {assessment?.skills?.filter((s) => s.is_custom).length ?? 0}{" "}
-            custom
+            {coverageSummary
+              ? `${coverageSummary.total > 0 ? Math.round((coverageSummary.covered / coverageSummary.total) * 100) : 0}% of skills addressed`
+              : "No completed sessions yet"}
           </div>
         </div>
       </div>
@@ -482,22 +531,37 @@ export default function AssessmentInvitePage() {
                         <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-1.5">
                             {isPending && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 px-2 text-xs"
-                                onClick={() => copyLink(session, session.id)}
-                              >
-                                {copiedId === session.id ? (
-                                  <>
-                                    <Check className="h-3 w-3 mr-1" /> Copied
-                                  </>
-                                ) : (
-                                  <>
-                                    <Copy className="h-3 w-3 mr-1" /> Copy
-                                  </>
-                                )}
-                              </Button>
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 px-2 text-xs"
+                                  onClick={() =>
+                                    window.open(
+                                      inviteLinkFor(session.invite_token),
+                                      "_blank"
+                                    )
+                                  }
+                                >
+                                  <ExternalLink className="h-3 w-3 mr-1" /> Open
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 px-2 text-xs"
+                                  onClick={() => copyLink(session, session.id)}
+                                >
+                                  {copiedId === session.id ? (
+                                    <>
+                                      <Check className="h-3 w-3 mr-1" /> Copied
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy className="h-3 w-3 mr-1" /> Copy
+                                    </>
+                                  )}
+                                </Button>
+                              </>
                             )}
                             {isLive && (
                               <Button
