@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useSetAtom } from "jotai";
 import { isAxiosError } from "axios";
 import { authAtom, saveAuth } from "@/stores/authAtom";
+import { tenantAtom, saveTenant } from "@/stores/tenantAtom";
 import { authApi } from "@/services/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ const ROLE_REDIRECT: Record<string, string> = {
 export default function LoginPage() {
   const navigate = useNavigate();
   const setAuth = useSetAtom(authAtom);
+  const setTenant = useSetAtom(tenantAtom);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -31,8 +33,12 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const res = await authApi.login({ email, password });
-      const { token, user } = res.data;
+      const { token, user, tenant } = res.data;
       saveAuth(token, user);
+      if (tenant) {
+        saveTenant({ id: tenant.id, name: tenant.name });
+        setTenant({ id: tenant.id, name: tenant.name });
+      }
       setAuth({ token, user });
       navigate(ROLE_REDIRECT[user.role] ?? "/assessments");
     } catch (err) {

@@ -1,8 +1,10 @@
 import axios from "axios";
 import { getStoredToken, clearAuth } from "@/stores/authAtom";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3000/api/v1";
-const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL ?? "ws://localhost:3000";
+const API_PORT = import.meta.env.VITE_API_PORT ?? "3001";
+const hostname = window.location.hostname;
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? `http://${hostname}:${API_PORT}/api/v1`;
+const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL ?? `ws://${hostname}:${API_PORT}`;
 
 export const WS_URL = WS_BASE_URL;
 

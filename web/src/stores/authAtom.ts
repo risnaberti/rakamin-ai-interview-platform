@@ -1,4 +1,5 @@
 import { atom } from "jotai";
+import { clearTenant } from "./tenantAtom";
 
 export interface AuthUser {
   id: number;
@@ -35,6 +36,7 @@ export function saveAuth(token: string, user: AuthUser) {
 export function clearAuth() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+  clearTenant();
 }
 
 export const authAtom = atom<AuthState>({
