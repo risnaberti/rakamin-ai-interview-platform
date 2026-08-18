@@ -15,7 +15,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { assessmentsApi } from "@/services/assessments";
 import { LEVEL_LABELS } from "@/utils/constants";
-import { ArrowLeft, Copy, Check, Eye, Pencil, Clock, Plus, UserRound } from "lucide-react";
+import { Copy, Check, Eye, Pencil, Clock, Plus, UserRound } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
+import EmptyState from "@/components/ui/empty-state";
 import type { Assessment, Session } from "@/types";
 
 // Invite links must point at the web app (where /interview/:token lives),
@@ -226,11 +228,8 @@ export default function AssessmentInvitePage() {
   if (loadError) {
     return (
       <div className="max-w-2xl mx-auto space-y-4">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Link to="/assessments" className="hover:text-foreground">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-          Back
+        <div className="text-sm text-muted-foreground">
+          <Breadcrumb items={[{ label: "Assessments", href: "/assessments" }]} />
         </div>
         <div className="border rounded-lg p-8 text-center space-y-3">
           <p className="text-sm text-destructive">{loadError}</p>
@@ -246,16 +245,17 @@ export default function AssessmentInvitePage() {
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between">
-        <div className="flex items-center gap-2">
-          <Link to="/assessments" className="text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-          <div>
-            <h1 className="text-xl font-semibold">{assessment?.name ?? "—"}</h1>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
-              <Clock className="h-3 w-3" />
-              {assessment?.time_limit_min} min · {assessment?.skills?.length ?? 0} skills
-            </div>
+        <div>
+          <div className="mb-2">
+            <Breadcrumb items={[
+              { label: "Assessments", href: "/assessments" },
+              { label: assessment?.name ?? "—" }
+            ]} />
+          </div>
+          <h1 className="text-xl font-semibold">{assessment?.name ?? "—"}</h1>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+            <Clock className="h-3 w-3" />
+            {assessment?.time_limit_min} min · {assessment?.skills?.length ?? 0} skills
           </div>
         </div>
 
@@ -304,7 +304,7 @@ export default function AssessmentInvitePage() {
                 ? <>Link for <span className="font-semibold">{newSession.candidate_name}</span> ready — share with your candidate:</>
                 : <>New invite link ready — share with your candidate:</>}
             </p>
-            <div className="flex items-center gap-2 border rounded-md px-3 py-2 bg-white">
+            <div className="flex items-center gap-2 border rounded-md px-3 py-2 bg-card">
               <span className="flex-1 text-sm font-mono truncate text-muted-foreground">
                 {newSession.invite_token ? inviteLinkFor(newSession.invite_token) : ""}
               </span>
@@ -334,15 +334,11 @@ export default function AssessmentInvitePage() {
         </div>
 
         {sessions.length === 0 ? (
-          <div className="border rounded-lg p-10 text-center space-y-3">
-            <UserRound className="h-8 w-8 text-muted-foreground mx-auto" />
-            <div>
-              <p className="text-sm font-medium">No candidates yet</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Click "Invite Candidate" to generate an interview link.
-              </p>
-            </div>
-          </div>
+          <EmptyState
+            icon={<UserRound className="h-6 w-6 text-muted-foreground" />}
+            title="No candidates yet"
+            description="Click 'Invite Candidate' to generate an interview link."
+          />
         ) : (
           <Card>
             <CardContent className="p-0 divide-y">

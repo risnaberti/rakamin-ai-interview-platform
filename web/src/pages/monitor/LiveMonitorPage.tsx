@@ -24,7 +24,9 @@ import {
   COVERAGE_STATE_WIDTH,
   COVERAGE_STATE_COLOR,
 } from "@/utils/constants";
-import { ArrowLeft, CheckCircle, Clock, Radio, RefreshCw, Zap } from "lucide-react";
+import { CheckCircle, Clock, Radio, RefreshCw, Zap } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { Alert, AlertContent } from "@/components/ui/alert";
 import type { TranscriptTurn } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -144,18 +146,17 @@ export default function LiveMonitorPage() {
   if (loadError) {
     return (
       <div className="max-w-2xl mx-auto space-y-4">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Link to={`/assessments/${id}/invite`} className="hover:text-foreground">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-          Back
+        <div className="text-sm text-muted-foreground">
+          <Breadcrumb items={[{ label: "Sessions", href: `/assessments/${id}/invite` }]} />
         </div>
-        <div className="border rounded-lg p-8 text-center space-y-3">
-          <p className="text-sm text-destructive">{loadError}</p>
-          <Button variant="outline" size="sm" onClick={() => navigate(`/assessments/${id}/invite`)}>
-            Back to Sessions
-          </Button>
-        </div>
+        <Alert variant="danger">
+          <AlertContent className="text-center space-y-3">
+            <p>{loadError}</p>
+            <Button variant="outline" size="sm" onClick={() => navigate(`/assessments/${id}/invite`)}>
+              Back to Sessions
+            </Button>
+          </AlertContent>
+        </Alert>
       </div>
     );
   }
@@ -168,12 +169,13 @@ export default function LiveMonitorPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Link to={`/assessments/${id}/invite`} className="text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-            <h1 className="text-xl font-semibold">Live Monitor</h1>
+          <div className="mb-1">
+            <Breadcrumb items={[
+              { label: "Sessions", href: `/assessments/${id}/invite` },
+              { label: "Live Monitor" }
+            ]} />
           </div>
+          <h1 className="text-xl font-semibold">Live Monitor</h1>
           {assessmentName && (
             <p className="text-sm text-muted-foreground pl-6">{assessmentName}</p>
           )}
@@ -312,9 +314,9 @@ export default function LiveMonitorPage() {
       </Card>
 
       {endError && (
-        <div className="border border-destructive/40 rounded-lg p-3 text-sm text-destructive">
-          Failed to end session. Please try again.
-        </div>
+        <Alert variant="danger">
+          <AlertContent>Failed to end session. Please try again.</AlertContent>
+        </Alert>
       )}
 
       {/* End Session */}

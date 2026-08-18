@@ -3,8 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import EmptyState from "@/components/ui/empty-state";
+import { Alert, AlertIcon, AlertContent } from "@/components/ui/alert";
 import { assessmentsApi } from "@/services/assessments";
-import { Plus, Clock, ChevronRight } from "lucide-react";
+import { Plus, Clock, ChevronRight, ClipboardList } from "lucide-react";
 import type { Assessment } from "@/types";
 
 function SessionSummary({ session }: { session?: Assessment["latest_session"] }) {
@@ -51,9 +53,9 @@ export default function AssessmentListPage() {
       </div>
 
       {error && (
-        <div className="border border-destructive/40 rounded-lg p-4 text-sm text-destructive">
-          Failed to load assessments. Please refresh the page.
-        </div>
+        <Alert variant="danger">
+          <AlertContent>Failed to load assessments. Please refresh the page.</AlertContent>
+        </Alert>
       )}
 
       {loading ? (
@@ -61,12 +63,16 @@ export default function AssessmentListPage() {
           {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
         </div>
       ) : assessments.length === 0 ? (
-        <div className="border rounded-lg p-12 text-center text-sm text-muted-foreground">
-          <p className="mb-3">No assessments yet.</p>
-          <Button variant="outline" onClick={() => navigate("/assessments/new")}>
-            <Plus className="h-4 w-4 mr-1.5" /> Create your first assessment
-          </Button>
-        </div>
+        <EmptyState
+          icon={<ClipboardList className="h-6 w-6 text-muted-foreground" />}
+          title="No assessments yet"
+          description="Create an assessment to define skills and invite candidates."
+          action={
+            <Button variant="outline" onClick={() => navigate("/assessments/new")}>
+              <Plus className="h-4 w-4 mr-1.5" /> Create your first assessment
+            </Button>
+          }
+        />
       ) : (
         <div className="space-y-2">
           {assessments.map((a) => (

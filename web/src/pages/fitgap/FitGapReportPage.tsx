@@ -8,7 +8,9 @@ import ComparisonTable from "@/components/fitgap/ComparisonTable";
 import { portfoliosApi } from "@/services/portfolios";
 import { sessionsApi } from "@/services/sessions";
 import { usePolling } from "@/hooks/usePolling";
-import { ArrowLeft, Download, Loader2, RefreshCw, Zap, AlertCircle } from "lucide-react";
+import { Download, Loader2, RefreshCw, Zap } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { Alert, AlertContent } from "@/components/ui/alert";
 import type { FitGapReport, Portfolio } from "@/types";
 
 export default function FitGapReportPage() {
@@ -112,19 +114,17 @@ export default function FitGapReportPage() {
   if (error) {
     return (
       <div className="max-w-2xl mx-auto space-y-4">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Link to={`/assessments/${id}/invite`} className="hover:text-foreground">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-          Back
+        <div className="text-sm text-muted-foreground">
+          <Breadcrumb items={[{ label: "Sessions", href: `/assessments/${id}/invite` }]} />
         </div>
-        <div className="border rounded-lg p-8 text-center space-y-3">
-          <AlertCircle className="h-8 w-8 text-destructive mx-auto" />
-          <p className="text-sm text-destructive">{error}</p>
-          <Button variant="outline" size="sm" onClick={() => navigate(`/assessments/${id}/invite`)}>
-            Back to Sessions
-          </Button>
-        </div>
+        <Alert variant="danger">
+          <AlertContent className="text-center space-y-3">
+            <p>{error}</p>
+            <Button variant="outline" size="sm" onClick={() => navigate(`/assessments/${id}/invite`)}>
+              Back to Sessions
+            </Button>
+          </AlertContent>
+        </Alert>
       </div>
     );
   }
@@ -134,15 +134,13 @@ export default function FitGapReportPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Link
-              to={`/assessments/${id}/sessions/${sessionId}/portfolio`}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-            <h1 className="text-xl font-semibold">Fit/Gap Report</h1>
+          <div className="mb-1">
+            <Breadcrumb items={[
+              { label: "Sessions", href: `/assessments/${id}/invite` },
+              { label: "Fit/Gap Report" }
+            ]} />
           </div>
+          <h1 className="text-xl font-semibold">Fit/Gap Report</h1>
         </div>
 
         {portfolio && (

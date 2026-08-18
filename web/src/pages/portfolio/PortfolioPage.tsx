@@ -9,8 +9,25 @@ import { sessionsApi } from "@/services/sessions";
 import { vacanciesApi } from "@/services/vacancies";
 import { portfoliosApi } from "@/services/portfolios";
 import { usePolling } from "@/hooks/usePolling";
-import { ArrowLeft, Download, Loader2, RefreshCw, Zap, FileText, AlertCircle } from "lucide-react";
+import { Download, Loader2, RefreshCw, Zap, FileText } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { Alert, AlertIcon, AlertContent } from "@/components/ui/alert";
 import type { Portfolio, AssessorOverride, Vacancy } from "@/types";
+
+function friendlyGenerationError(raw?: string | null): string {
+  if (!raw) return "Portfolio generation failed due to an unexpected error.";
+  const lower = raw.toLowerCase();
+  if (lower.includes("rate limit")) {
+    return "Busy right now — retrying automatically. Please wait a moment.";
+  }
+  if (lower.includes("timeout")) {
+    return "The request timed out. Please try again.";
+  }
+  if (lower.includes("no content")) {
+    return "The AI did not return a result. Please try again.";
+  }
+  return raw;
+}
 
 export default function PortfolioPage() {
   const { id, sessionId } = useParams<{ id: string; sessionId: string }>();
@@ -110,19 +127,17 @@ export default function PortfolioPage() {
   if (error) {
     return (
       <div className="max-w-2xl mx-auto space-y-4">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Link to={`/assessments/${id}/invite`} className="hover:text-foreground">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-          Back
+        <div className="text-sm text-muted-foreground">
+          <Breadcrumb items={[{ label: "Sessions", href: `/assessments/${id}/invite` }]} />
         </div>
-        <div className="border rounded-lg p-8 text-center space-y-3">
-          <AlertCircle className="h-8 w-8 text-destructive mx-auto" />
-          <p className="text-sm text-destructive">{error}</p>
-          <Button variant="outline" size="sm" onClick={() => navigate(`/assessments/${id}/invite`)}>
-            Back to Sessions
-          </Button>
-        </div>
+        <Alert variant="danger">
+          <AlertContent className="text-center space-y-3">
+            <p>{error}</p>
+            <Button variant="outline" size="sm" onClick={() => navigate(`/assessments/${id}/invite`)}>
+              Back to Sessions
+            </Button>
+          </AlertContent>
+        </Alert>
       </div>
     );
   }
@@ -131,16 +146,17 @@ export default function PortfolioPage() {
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between">
-        <div className="flex items-center gap-2">
-          <Link to={`/assessments/${id}/invite`} className="text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-          <div>
-            <h1 className="text-xl font-semibold">Portfolio Results</h1>
-            {candidateName && (
-              <p className="text-sm text-muted-foreground">{candidateName}</p>
-            )}
+        <div>
+          <div className="mb-2">
+            <Breadcrumb items={[
+              { label: "Sessions", href: `/assessments/${id}/invite` },
+              { label: "Portfolio" }
+            ]} />
           </div>
+          <h1 className="text-xl font-semibold">Portfolio Results</h1>
+          {candidateName && (
+            <p className="text-sm text-muted-foreground">{candidateName}</p>
+          )}
         </div>
 
         <div className="flex gap-2">
@@ -191,19 +207,29 @@ export default function PortfolioPage() {
 
       {/* Failed state */}
       {!generating && portfolio?.generation_status === "failed" && (
-        <div className="border border-destructive/40 rounded-lg p-6 text-center space-y-3">
-          <p className="text-sm text-destructive">Portfolio generation failed.</p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={async () => {
-              await sessionsApi.regeneratePortfolio(Number(sessionId));
-              setGenerating(true);
-            }}
-          >
-            <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Retry
-          </Button>
-        </div>
+        <Alert variant="warning">
+          <AlertIcon><RefreshCw className="h-4 w-4" /></AlertIcon>
+          <AlertContent className="flex items-center justify-between">
+            <div>
+              <p className="font-medium">{friendlyGenerationError(portfolio.generation_error)}</p>
+              <p className="text-xs mt-1 opacity-70">
+                {portfolio.generation_error && portfolio.generation_error !== "null"
+                  ? `Technical detail: ${portfolio.generation_error}`
+                  : ""}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                await sessionsApi.regeneratePortfolio(Number(sessionId));
+                setGenerating(true);
+              }}
+            >
+              <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Retry
+            </Button>
+          </AlertContent>
+        </Alert>
       )}
 
       {/* Ready state */}

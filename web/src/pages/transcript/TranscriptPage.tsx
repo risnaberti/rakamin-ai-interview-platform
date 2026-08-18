@@ -3,7 +3,9 @@ import { useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { sessionsApi } from "@/services/sessions";
-import { ArrowLeft, Download } from "lucide-react";
+import { Download } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { Alert, AlertContent } from "@/components/ui/alert";
 import type { TranscriptTurn } from "@/types";
 
 export default function TranscriptPage() {
@@ -43,19 +45,17 @@ export default function TranscriptPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Link
-            to={`/assessments/${id}/sessions/${sessionId}/portfolio`}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-          <div>
-            <h1 className="text-xl font-semibold">Interview Transcript</h1>
-            {candidateName && (
-              <p className="text-sm text-muted-foreground">{candidateName}</p>
-            )}
+        <div>
+          <div className="mb-2">
+            <Breadcrumb items={[
+              { label: "Sessions", href: `/assessments/${id}/invite` },
+              { label: "Transcript" }
+            ]} />
           </div>
+          <h1 className="text-xl font-semibold">Interview Transcript</h1>
+          {candidateName && (
+            <p className="text-sm text-muted-foreground">{candidateName}</p>
+          )}
         </div>
         {!loading && !error && turns.length > 0 && (
           <Button variant="outline" size="sm" onClick={handleDownload}>
@@ -74,9 +74,9 @@ export default function TranscriptPage() {
       )}
 
       {!loading && error && (
-        <div className="border rounded-lg p-6 text-center text-sm text-destructive">
-          Failed to load transcript. Please refresh.
-        </div>
+        <Alert variant="danger">
+          <AlertContent className="text-center">Failed to load transcript. Please refresh.</AlertContent>
+        </Alert>
       )}
 
       {!loading && !error && turns.length === 0 && (

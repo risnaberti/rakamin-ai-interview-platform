@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Eye, EyeOff, BrainCircuit } from "lucide-react";
+import { Alert, AlertContent } from "@/components/ui/alert";
 
 const ROLE_REDIRECT: Record<string, string> = {
   hiring_manager: "/assessments",
@@ -95,9 +96,9 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <div className="bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">
-                <p className="text-sm text-destructive">{error}</p>
-              </div>
+              <Alert variant="danger">
+                <AlertContent>{error}</AlertContent>
+              </Alert>
             )}
 
             <Button type="submit" className="w-full" disabled={loading}>

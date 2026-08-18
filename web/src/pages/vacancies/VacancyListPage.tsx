@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import EmptyState from "@/components/ui/empty-state";
+import { Alert, AlertIcon, AlertContent } from "@/components/ui/alert";
 import { vacanciesApi } from "@/services/vacancies";
 import { Plus, Briefcase, ChevronRight } from "lucide-react";
 import type { Vacancy } from "@/types";
@@ -30,9 +32,9 @@ export default function VacancyListPage() {
       </div>
 
       {error && (
-        <div className="border border-destructive/40 rounded-lg p-4 text-sm text-destructive">
-          Failed to load vacancies. Please refresh the page.
-        </div>
+        <Alert variant="danger">
+          <AlertContent>Failed to load vacancies. Please refresh the page.</AlertContent>
+        </Alert>
       )}
 
       {loading ? (
@@ -40,12 +42,16 @@ export default function VacancyListPage() {
           {[1, 2].map((i) => <Skeleton key={i} className="h-14 w-full" />)}
         </div>
       ) : vacancies.length === 0 ? (
-        <div className="border rounded-lg p-12 text-center text-sm text-muted-foreground">
-          <p className="mb-3">No vacancies yet.</p>
-          <Button variant="outline" onClick={() => navigate("/vacancies/new")}>
-            <Plus className="h-4 w-4 mr-1.5" /> Create your first vacancy
-          </Button>
-        </div>
+        <EmptyState
+          icon={<Briefcase className="h-6 w-6 text-muted-foreground" />}
+          title="No vacancies yet"
+          description="Create a vacancy to start assessing candidates."
+          action={
+            <Button variant="outline" onClick={() => navigate("/vacancies/new")}>
+              <Plus className="h-4 w-4 mr-1.5" /> Create your first vacancy
+            </Button>
+          }
+        />
       ) : (
         <div className="space-y-2">
           {vacancies.map((v) => (

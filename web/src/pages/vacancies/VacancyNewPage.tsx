@@ -9,7 +9,8 @@ import { Separator } from "@/components/ui/separator";
 import LevelRadio from "@/components/assessment/LevelRadio";
 import SkillPicker from "@/components/assessment/SkillPicker";
 import { vacanciesApi } from "@/services/vacancies";
-import { ArrowLeft, Plus, X, Loader2 } from "lucide-react";
+import { Plus, X, Loader2 } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import type { VacancySkill } from "@/types";
 
 interface VacancyFormValues {
@@ -51,13 +52,11 @@ export default function VacancyNewPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="flex items-center gap-2 mb-6">
-        <Link to="/vacancies" className="text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
-        <span className="text-sm text-muted-foreground">Vacancies</span>
-        <span className="text-sm text-muted-foreground">/</span>
-        <span className="text-sm font-medium">New Vacancy</span>
+      <div className="mb-6">
+        <Breadcrumb items={[
+          { label: "Vacancies", href: "/vacancies" },
+          { label: "New" }
+        ]} />
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
