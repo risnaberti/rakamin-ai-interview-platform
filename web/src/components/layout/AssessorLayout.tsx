@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import { useAtomValue, useSetAtom } from "jotai";
 import { tenantAtom } from "@/stores/tenantAtom";
@@ -14,7 +15,14 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
-import { ClipboardList, Briefcase, LogOut } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { ClipboardList, Briefcase, LogOut, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -27,6 +35,7 @@ export default function AssessorLayout() {
   const setAuth = useSetAtom(authAtom);
   const navigate = useNavigate();
   const location = useLocation();
+  const [logoutOpen, setLogoutOpen] = useState(false);
 
   const handleLogout = () => {
     clearAuth();
@@ -37,8 +46,8 @@ export default function AssessorLayout() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-7 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-7">
+        <div className="max-w-7xl mx-auto px-4 sm:px-7 min-h-14 h-auto py-2 flex flex-wrap items-center justify-between gap-y-2">
+          <div className="flex items-center gap-3 sm:gap-7">
             <Link to="/assessments" className="flex items-center gap-2.5 flex-shrink-0">
               <div className="w-[30px] h-[30px] bg-[#0F7B6C] rounded-lg flex items-center justify-center">
                 <img src="/assets/logo.jpeg" alt="Logo" />
@@ -49,11 +58,11 @@ export default function AssessorLayout() {
                   <rect x="9" y="9" width="6" height="6" rx="1.5" fill="white" opacity="0.9"/>
                 </svg> */}
               </div>
-              <span className="font-semibold text-sm text-gray-900">
+              <span className="font-semibold text-sm text-gray-900 hidden sm:block">
                 Rakamin AI Interview
               </span>
             </Link>
-            <nav className="flex items-center gap-0.5">
+            <nav className="hidden md:flex items-center gap-0.5">
               {navItems.map(({ href, label, icon: Icon }) => {
                 const active = location.pathname.startsWith(href);
                 return (
@@ -76,13 +85,13 @@ export default function AssessorLayout() {
           </div>
           <div className="flex items-center gap-2.5">
             {tenant.name && (
-              <span className="text-xs text-gray-500 bg-gray-100 border border-gray-200 rounded-full px-3 py-1 whitespace-nowrap">
+              <span className="hidden md:block text-xs text-gray-500 bg-gray-100 border border-gray-200 rounded-full px-3 py-1 whitespace-nowrap">
                 {tenant.name}
               </span>
             )}
-            <AlertDialog>
+            <AlertDialog open={logoutOpen} onOpenChange={setLogoutOpen}>
               <AlertDialogTrigger asChild>
-                <button className="flex items-center gap-1.5 text-[13px] text-gray-600 hover:text-gray-900 hover:bg-gray-100 px-2.5 py-1.5 rounded-md transition-colors">
+                <button className="hidden md:flex items-center gap-1.5 text-[13px] text-gray-600 hover:text-gray-900 hover:bg-gray-100 px-2.5 py-1.5 rounded-md transition-colors">
                   <LogOut className="w-4 h-4" />
                   Logout
                 </button>
@@ -100,11 +109,32 @@ export default function AssessorLayout() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="md:hidden flex items-center justify-center w-9 h-9 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors">
+                  <Menu className="w-5 h-5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                {navItems.map(({ href, label, icon: Icon }) => (
+                  <DropdownMenuItem key={href} onSelect={() => navigate(href)}>
+                    <Icon className="w-4 h-4 mr-2" />
+                    {label}
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => setLogoutOpen(true)}>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 max-w-7xl mx-auto w-full px-7 py-8">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-7 py-8">
         <Outlet />
       </main>
     </div>

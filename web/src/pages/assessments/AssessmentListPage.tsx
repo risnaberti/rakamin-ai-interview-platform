@@ -143,8 +143,8 @@ export default function AssessmentListPage() {
         </Alert>
       )}
 
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="relative w-full sm:flex-1 sm:max-w-xs order-2 sm:order-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
             type="text"
@@ -154,7 +154,7 @@ export default function AssessmentListPage() {
             className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
           />
         </div>
-        <div className="flex gap-1.5 flex-wrap">
+        <div className="flex gap-1.5 flex-wrap order-1 sm:order-2">
           {FILTERS.map((f) => (
             <button
               key={f.key}

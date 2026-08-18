@@ -236,7 +236,7 @@ export default function PortfolioPage() {
   return (
     <div className="max-w-[1060px] mx-auto space-y-5">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <Breadcrumb items={[
             { label: "Sessions", href: `/assessments/${id}/invite` },
@@ -324,7 +324,7 @@ export default function PortfolioPage() {
 
       {/* Ready state */}
       {!generating && portfolio?.generation_status === "complete" && (
-        <div className="grid grid-cols-[1fr_280px] gap-5 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-5 items-start">
           {/* Main content */}
           <div className="space-y-3.5">
             {configuredSkills.map((skill) => (

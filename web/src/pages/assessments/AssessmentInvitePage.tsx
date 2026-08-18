@@ -277,7 +277,7 @@ export default function AssessmentInvitePage() {
     return (
       <div className="max-w-6xl mx-auto space-y-5">
         <Skeleton className="h-8 w-64" />
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Skeleton className="h-24 w-full" />
           <Skeleton className="h-24 w-full" />
           <Skeleton className="h-24 w-full" />
@@ -316,7 +316,7 @@ export default function AssessmentInvitePage() {
       />
 
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-semibold">{assessment?.name ?? "—"}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
@@ -404,7 +404,7 @@ export default function AssessmentInvitePage() {
       )}
 
       {/* Stats row */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="bg-white border border-gray-200 rounded-xl px-4 py-3.5">
           <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-1">
             Total candidates
@@ -453,7 +453,7 @@ export default function AssessmentInvitePage() {
       </div>
 
       {/* Two-column layout */}
-      <div className="grid grid-cols-[1fr_320px] gap-5 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5 items-start">
         {/* Main: Candidates table */}
         <div>
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
@@ -470,7 +470,8 @@ export default function AssessmentInvitePage() {
                 description="Click 'New session' to generate an interview link."
               />
             ) : (
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200">
                     <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-500">
@@ -603,6 +604,7 @@ export default function AssessmentInvitePage() {
                   })}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
         </div>

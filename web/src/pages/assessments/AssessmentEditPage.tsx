@@ -287,11 +287,12 @@ export default function AssessmentEditPage() {
             </DndContext>
           )}
 
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <Button
               type="button"
               variant="outline"
               size="sm"
+              className="w-full sm:w-auto"
               onClick={() => setPickerOpen(true)}
             >
               <Plus className="h-3.5 w-3.5 mr-1" />
@@ -301,6 +302,7 @@ export default function AssessmentEditPage() {
               type="button"
               variant="outline"
               size="sm"
+              className="w-full sm:w-auto"
               onClick={() =>
                 append({
                   skill_label: "",
