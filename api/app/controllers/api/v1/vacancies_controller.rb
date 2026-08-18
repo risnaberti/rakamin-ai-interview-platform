@@ -21,7 +21,7 @@ module Api
 
       # GET /api/v1/vacancies
       def index
-        vacancies = paginate(Vacancy.order(created_at: :desc))
+        vacancies = paginate(Vacancy.includes(:vacancy_skills).order(created_at: :desc))
 
         json_response(
           vacancies: vacancies.map(&method(:vacancy_json)),
@@ -88,7 +88,8 @@ module Api
           competency_expectations:  vacancy.competency_expectations,
           created_by:               vacancy.created_by,
           created_at:               vacancy.created_at,
-          updated_at:               vacancy.updated_at
+          updated_at:               vacancy.updated_at,
+          skills_count:             vacancy.vacancy_skills.size
         }
       end
 

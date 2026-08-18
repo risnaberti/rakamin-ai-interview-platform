@@ -234,9 +234,9 @@ export default function AssessmentListPage() {
                       {a.time_limit_min} min
                     </span>
                     <MetaDot />
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-50 text-gray-500 border border-gray-200">
-                      {a.skills?.length ?? 0} skill{(a.skills?.length ?? 0) !== 1 ? "s" : ""}
-                    </span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-50 text-gray-500 border border-gray-200">
+                        {a.skills_count ?? 0} skill{(a.skills_count ?? 0) !== 1 ? "s" : ""}
+                      </span>
                   </div>
                 </div>
 

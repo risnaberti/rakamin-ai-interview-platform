@@ -106,7 +106,7 @@ export default function VacancyListPage() {
 
                 <div className="flex items-center gap-2.5 flex-shrink-0">
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-50 text-gray-500 border border-gray-200">
-                    {v.skills?.length ?? 0} skill{(v.skills?.length ?? 0) !== 1 ? "s" : ""}
+                    {v.skills_count ?? 0} skill{(v.skills_count ?? 0) !== 1 ? "s" : ""}
                   </span>
                   <ChevronRight className="w-4 h-4 text-gray-400" />
                 </div>

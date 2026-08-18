@@ -8,6 +8,7 @@ export interface Assessment {
   created_at?: string;
   updated_at?: string;
   skills?: AssessmentSkill[];
+  skills_count?: number;
   latest_session?: {
     status: "pending" | "active" | "ended";
     end_reason?: string | null;
@@ -115,6 +116,7 @@ export interface Vacancy {
   created_at?: string;
   updated_at?: string;
   skills: VacancySkill[];
+  skills_count?: number;
 }
 
 export interface VacancySkill {

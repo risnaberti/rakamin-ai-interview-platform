@@ -21,7 +21,7 @@ module Api
 
       # GET /api/v1/assessments
       def index
-        scope = Assessment.includes(:sessions).order(created_at: :desc)
+        scope = Assessment.includes(:sessions, :assessment_skills).order(created_at: :desc)
         scope = filter_by_status(scope) if query_params[:status].present?
         scope = scope.where("name ILIKE ?", "%#{query_params[:role_title]}%") if query_params[:role_title].present?
 
@@ -101,6 +101,7 @@ module Api
           created_by:     assessment.created_by,
           created_at:     assessment.created_at,
           updated_at:     assessment.updated_at,
+          skills_count:   assessment.assessment_skills.size,
           latest_session: latest && {
             id:         latest.id,
             status:     latest.status,
