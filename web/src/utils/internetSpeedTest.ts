@@ -1,5 +1,7 @@
 // Internet Speed Test Utilities — standalone, no backend dependency
 
+import { API_BASE_URL } from "@/config";
+
 export interface InternetSpeedResult {
     download: number;
     upload: number;
@@ -101,10 +103,9 @@ async function measureUploadSpeed(): Promise<number> {
         type: "application/octet-stream",
     });
     // Self-hosted endpoint first, then fallback to external services
-    const baseUrl = import.meta.env.VITE_API_URL || '';
     const endpoints = SPEED_TEST_UPLOAD_URL
         ? [SPEED_TEST_UPLOAD_URL]
-        : [`${baseUrl}/api/v1/speed_test`, "https://httpbin.org/post", "https://postman-echo.com/post"];
+        : [`${API_BASE_URL}/speed_test`, "https://httpbin.org/post", "https://postman-echo.com/post"];
     for (const endpoint of endpoints) {
         try {
             const formData = new FormData();

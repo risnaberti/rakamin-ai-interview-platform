@@ -1,15 +1,11 @@
 import axios from "axios";
 import { getStoredToken, clearAuth } from "@/stores/authAtom";
-
-const API_PORT = import.meta.env.VITE_API_PORT ?? "3001";
-const hostname = window.location.hostname;
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? `http://${hostname}:${API_PORT}/api/v1`;
-const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL ?? `ws://${hostname}:${API_PORT}`;
+import { API_BASE_URL, WS_BASE_URL } from "@/config";
 
 export const WS_URL = WS_BASE_URL;
 
 export const api = axios.create({
-  baseURL: BASE_URL,
+  baseURL: API_BASE_URL,
   headers: { "Content-Type": "application/json" },
 });
 
