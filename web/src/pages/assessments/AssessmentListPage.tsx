@@ -9,6 +9,7 @@ import {
   Plus,
   Clock,
   ChevronRight,
+  ChevronLeft,
   ClipboardList,
   Search,
 } from "lucide-react";
@@ -64,59 +65,74 @@ export default function AssessmentListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [filter, setFilter] = useState<FilterStatus>("all");
-  const [roleTitleSearch, setRoleTitleSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const abortRef = useRef<AbortController | null>(null);
   const navigate = useNavigate();
 
-  const fetchAssessments = useCallback(
-    async (status: FilterStatus, roleTitle: string) => {
-      abortRef.current?.abort();
-      const controller = new AbortController();
-      abortRef.current = controller;
+  const fetchAssessments = useCallback(async () => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
 
-      setLoading(true);
-      setError(false);
-      try {
-        const params: { status?: string; role_title?: string } = {};
-        if (status !== "all") params.status = status;
-        if (roleTitle.trim()) params.role_title = roleTitle.trim();
-        const res = await assessmentsApi.list(1, params, controller.signal);
-        setAssessments(res.data.assessments);
-        setTotalCount(res.data.meta.total_count);
-      } catch (e: any) {
-        if (e?.code === "ERR_CANCELED") return;
-        setError(true);
-      } finally {
-        if (abortRef.current === controller) setLoading(false);
-      }
-    },
-    []
-  );
+    setLoading(true);
+    setError(false);
+    try {
+      const params: {
+        status?: string;
+        role_title?: string;
+        per_page: number;
+      } = { per_page: 20 };
+      if (filter !== "all") params.status = filter;
+      if (debouncedSearch.trim()) params.role_title = debouncedSearch.trim();
+      const res = await assessmentsApi.list(page, params, controller.signal);
+      setAssessments(res.data.assessments);
+      setTotalCount(res.data.meta.total_count);
+      setTotalPages(res.data.meta.total_pages);
+    } catch (e: any) {
+      if (e?.code === "ERR_CANCELED") return;
+      setError(true);
+    } finally {
+      if (abortRef.current === controller) setLoading(false);
+    }
+  }, [filter, debouncedSearch, page]);
 
   useEffect(() => {
-    fetchAssessments(filter, roleTitleSearch);
-  }, [filter, fetchAssessments]);
+    fetchAssessments();
+  }, [fetchAssessments]);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(searchInput.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   useEffect(() => {
     return () => abortRef.current?.abort();
   }, []);
 
-  const handleRoleTitleChange = (value: string) => {
-    setRoleTitleSearch(value);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      fetchAssessments(filter, value);
-    }, 300);
+  const handleFilterChange = (f: FilterStatus) => {
+    setFilter(f);
+    setPage(1);
   };
 
-  const hasActiveFilters = filter !== "all" || roleTitleSearch.trim() !== "";
+  const goToPage = (p: number) => {
+    if (p < 1 || p > totalPages || p === page) return;
+    setPage(p);
+  };
+
+  const hasActiveFilters = filter !== "all" || debouncedSearch.trim() !== "";
 
   const clearFilters = () => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    setRoleTitleSearch("");
+    setSearchInput("");
+    setDebouncedSearch("");
     setFilter("all");
+    setPage(1);
   };
 
   return (
@@ -149,8 +165,8 @@ export default function AssessmentListPage() {
           <input
             type="text"
             placeholder="Search by role title..."
-            value={roleTitleSearch}
-            onChange={(e) => handleRoleTitleChange(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
           />
         </div>
@@ -158,7 +174,7 @@ export default function AssessmentListPage() {
           {FILTERS.map((f) => (
             <button
               key={f.key}
-              onClick={() => setFilter(f.key)}
+              onClick={() => handleFilterChange(f.key)}
               className={cn(
                 "inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium border transition-colors",
                 filter === f.key
@@ -255,6 +271,43 @@ export default function AssessmentListPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {!loading && assessments.length > 0 && totalPages > 1 && (
+        <div className="flex items-center justify-center gap-1.5 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page <= 1}
+            onClick={() => goToPage(page - 1)}
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Prev
+          </Button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+            <button
+              key={p}
+              onClick={() => goToPage(p)}
+              className={cn(
+                "h-8 w-8 rounded-md text-sm font-medium border transition-colors",
+                p === page
+                  ? "bg-teal-600 text-white border-teal-600"
+                  : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+              )}
+            >
+              {p}
+            </button>
+          ))}
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page >= totalPages}
+            onClick={() => goToPage(page + 1)}
+          >
+            Next
+            <ChevronRight className="h-4 w-4 ml-1" />
+          </Button>
         </div>
       )}
     </div>

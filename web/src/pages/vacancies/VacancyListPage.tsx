@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import EmptyState from "@/components/ui/empty-state";
 import { Alert, AlertContent } from "@/components/ui/alert";
 import { vacanciesApi } from "@/services/vacancies";
-import { Plus, Briefcase, ChevronRight } from "lucide-react";
+import { Plus, Briefcase, ChevronRight, ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Vacancy } from "@/types";
 
@@ -29,24 +29,55 @@ export default function VacancyListPage() {
   const [vacancies, setVacancies] = useState<Vacancy[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const abortRef = useRef<AbortController | null>(null);
   const navigate = useNavigate();
 
+  const fetchVacancies = useCallback(async () => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setLoading(true);
+    setError(false);
+    try {
+      const res = await vacanciesApi.list(page, 20, controller.signal);
+      setVacancies(res.data.vacancies);
+      setTotalCount(res.data.meta.total_count);
+      setTotalPages(res.data.meta.total_pages);
+    } catch (e: any) {
+      if (e?.code === "ERR_CANCELED") return;
+      setError(true);
+    } finally {
+      if (abortRef.current === controller) setLoading(false);
+    }
+  }, [page]);
+
   useEffect(() => {
-    vacanciesApi
-      .list()
-      .then((res) => setVacancies(res.data.vacancies))
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
+    fetchVacancies();
+  }, [fetchVacancies]);
+
+  useEffect(() => {
+    return () => abortRef.current?.abort();
   }, []);
+
+  const goToPage = (p: number) => {
+    if (p < 1 || p > totalPages || p === page) return;
+    setPage(p);
+  };
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold">Vacancies</h1>
-          {!loading && vacancies.length > 0 && (
+          {loading ? (
+            <Skeleton className="h-5 w-20 mt-1" />
+          ) : (
             <p className="text-sm text-muted-foreground mt-0.5">
-              {vacancies.length} vacancy{vacancies.length !== 1 ? "ies" : ""}
+              {totalCount} vacancy{totalCount !== 1 ? "ies" : ""}
             </p>
           )}
         </div>
@@ -113,6 +144,43 @@ export default function VacancyListPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {!loading && vacancies.length > 0 && totalPages > 1 && (
+        <div className="flex items-center justify-center gap-1.5 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page <= 1}
+            onClick={() => goToPage(page - 1)}
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Prev
+          </Button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+            <button
+              key={p}
+              onClick={() => goToPage(p)}
+              className={cn(
+                "h-8 w-8 rounded-md text-sm font-medium border transition-colors",
+                p === page
+                  ? "bg-teal-600 text-white border-teal-600"
+                  : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+              )}
+            >
+              {p}
+            </button>
+          ))}
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page >= totalPages}
+            onClick={() => goToPage(page + 1)}
+          >
+            Next
+            <ChevronRight className="h-4 w-4 ml-1" />
+          </Button>
         </div>
       )}
     </div>

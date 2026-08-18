@@ -58,7 +58,7 @@ export default function AssessorLayout() {
                   <rect x="9" y="9" width="6" height="6" rx="1.5" fill="white" opacity="0.9"/>
                 </svg> */}
               </div>
-              <span className="font-semibold text-sm text-gray-900 hidden sm:block">
+              <span className="font-semibold text-sm text-gray-900">
                 Rakamin AI Interview
               </span>
             </Link>

@@ -11,7 +11,7 @@ export interface AssessmentPayload {
 export const assessmentsApi = {
   list: (
     page = 1,
-    filters?: { status?: string; role_title?: string },
+    filters?: { status?: string; role_title?: string; per_page?: number },
     signal?: AbortSignal
   ) =>
     api.get<{ assessments: Assessment[]; meta: PaginationMeta }>("/assessments", {
