@@ -154,6 +154,89 @@ Sebelum polish, frontend memiliki beberapa masalah:
 - **Sebelum:** "Portfolio generation failed." — hardcoded, tanpa penjelasan
 - **Sesudah:** Pesan yang membantu user memahami situasi + tahu bahwa ini recoverable
 
+### P3.14 Role Title Combobox (Data Consistency)
+
+- **File:** `web/src/components/ui/combobox.tsx` (new), `web/src/components/ui/popover.tsx` (new)
+- **File:** `web/src/pages/vacancies/VacancyNewPage.tsx`, `VacancyEditPage.tsx`, `AssessmentNewPage.tsx`, `AssessmentEditPage.tsx`
+- **File:** `web/src/services/vacancies.ts` (add `roleTitles()` method)
+- **Backend:** `api/app/controllers/api/v1/vacancies_controller.rb` (add `role_titles` action)
+- **Backend:** `api/config/routes.rb` (add `get "vacancies/role_titles"` route)
+- **Backend:** `api/app/models/vacancy.rb` (add `normalize_role_title` + uniqueness validation)
+- **Backend:** `api/db/migrate/20260818000000_add_unique_index_on_vacancy_role_title.rb` (new)
+- **Apa:**
+  - Ganti free-text input role title → **Combobox** (searchable dropdown + custom input)
+  - Fetch existing role titles dari API sebagai suggestions
+  - User bisa pilih dari existing entries ATAU type baru
+  - Backend normalize role title (strip + squeeze spaces) + unique constraint per tenant
+  - DB unique index on `LOWER(TRIM(role_title))` prevents double entry
+- **Dependencies:** `cmdk`, `@radix-ui/react-popover` (installed)
+- **Sebelum:** Free-text input → "Senior FE" vs "Senior Frontend" = 2 record berbeda
+- **Sesudah:** Combobox dengan suggestions → user pilih dari list, konsistensi terjaga
+
+### P3.15 SkillPicker Duplicate Prevention
+
+- **File:** `web/src/components/assessment/SkillPicker.tsx`
+- **File:** Semua form pages (VacancyNew/Edit, AssessmentNew/Edit)
+- **Backend:** `api/app/models/assessment_skill.rb`, `api/app/models/vacancy_skill.rb`
+- **Apa:**
+  - SkillPicker terima `selectedSkillIds` + `selectedSkillLabels` props
+  - Skill yang sudah dipilih di-disable (grayed out + checkmark) di picker
+  - Backend validasi: `skill_label` unik dalam 1 assessment/vacancy (case-insensitive)
+  - Fix `skill_id: undefined` → `skill_id: s.skill_id` (preserve taxonomy linkage)
+- **Sebelum:** User bisa klik skill yang sama berkali-kali → duplicate entries
+- **Sesudah:** Skill yang sudah ada di-disable di picker + backend reject duplicate
+
+### P3.16 Assessment List Page Revamp
+
+- **File:** `web/src/pages/assessments/AssessmentListPage.tsx`
+- **Apa:**
+  - Colored card icons (40x40, rounded-lg) berdasarkan hash nama assessment — 5 warna (teal, blue, purple, amber, red)
+  - Status badges dengan dot indicator (completed=teal, awaiting=amber, failed=red)
+  - Filter pills (All, Completed, Awaiting, Failed) dengan count badge — stateful filter
+  - Meta text: "X assessments" di bawah judul halaman
+  - Skill count chip di setiap card
+  - Deterministic icon selection berdasarkan assessment name (hash function)
+- **Sebelum:** Plain cards dengan text status, tanpa colored icons, tanpa filter pills
+- **Sesudah:** Cards dengan colored icon backgrounds, status badges, filter pills — sesuai design reference `rakamin-ui-revamp.html`
+
+### P3.17 Assessment Detail Page Revamp
+
+- **File:** `web/src/pages/assessments/AssessmentInvitePage.tsx`
+- **Apa:**
+  - Two-column layout (`grid-cols-[1fr_320px]`) menggantikan single column
+  - Stats row: 3 stat cards (Total candidates, Completion rate, Skills assessed) — computed dari sessions data
+  - Candidate table: avatar initials dengan colored background, name, submitted date, status badge, action button (Copy/Monitor/Report)
+  - Sidebar: Assessment info card (Duration, Language, Skills, Created) + Skills breakdown card (progress bars)
+  - Link banner: teal-50 background dengan Link2 icon + copy button — menggantikan Card-based invite link
+  - Deterministic avatar colors berdasarkan candidate name (hash function)
+- **Sebelum:** Single column `max-w-2xl`, basic session list dengan numbered circles, tanpa stats, tanpa sidebar
+- **Sesudah:** Professional two-column layout `max-w-6xl` dengan stats row, candidate table, sidebar — sesuai design reference
+
+### P3.18 Navbar Revamp
+
+- **File:** `web/src/components/layout/AssessorLayout.tsx`
+- **Apa:**
+  - 4-square grid SVG logo (white squares on `#0F7B6C` background, rounded-lg) menggantikan `LayoutDashboard` Lucide icon
+  - Active nav tab: `bg-teal-50 text-teal-700` (menggantikan `bg-primary/10 text-primary`)
+  - Tenant pill: `bg-gray-100 border-gray-200 rounded-full` (menggantikan border-only style)
+  - Logout button: plain style dengan hover effect (`hover:bg-gray-100`)
+  - Page background: `bg-gray-50` (menggantikan `bg-background`) untuk visual depth
+- **Sebelum:** `LayoutDashboard` icon, `bg-primary/10 text-primary` active state, border-only tenant pill, white background
+- **Sesudah:** Branded 4-square logo, teal-50 active state, polished tenant pill — sesuai design reference
+
+### P3.19 Form Pages Revamp
+
+- **File:** `AssessmentNewPage.tsx`, `AssessmentEditPage.tsx`, `VacancyNewPage.tsx`, `VacancyEditPage.tsx`
+- **Apa:**
+  - Card wrapper: `bg-white border border-gray-200 rounded-xl p-7 max-w-[680px]` untuk semua form
+  - Section titles: uppercase, letter-spacing (`text-[13px] font-semibold text-gray-500 uppercase tracking-wider`) — "ROLE DETAILS", "SKILLS", "ADDITIONAL DETAILS"
+  - Form hints: `text-xs text-gray-500` di bawah inputs ("Used to generate AI interview questions...")
+  - Skills widget: dashed empty state dengan Skills icon (`border-dashed border-gray-300`), populated rows dalam bordered container
+  - Form actions: `border-t border-gray-200` divider, ghost cancel + primary save dengan arrow icon
+  - Skill row layout: flex dengan skill name + level radio + remove button (inline, bukan card per skill)
+- **Sebelum:** Plain forms tanpa card wrapper, tanpa section titles, basic skill widget dengan card per skill
+- **Sesudah:** Card-based forms dengan section dividers, hints, polished skill widget — sesuai design reference
+
 ---
 
 ## 3. ALASAN & DAMPAK
@@ -242,6 +325,61 @@ Sebelum polish, frontend memiliki beberapa masalah:
 - **Actionable:** User tahu harus apa (tunggu, coba lagi, atau hubungi admin)
 - **Reduced support:** User tidak panic dan menghubungi support untuk hal yang sebenarnya recoverable
 
+### 3.10 Mengapa Role Title Perlu Combobox
+
+**Alasan:** Free-text input untuk role title menyebabkan inkonsistensi data. "Senior Frontend Engineer", "Senior FE", "senior frontend engineer" — semua dianggap berbeda. Tanpa normalisasi, data menjadi kotor dan sulit di-analyze.
+
+**Dampak:**
+- **Data quality:** Combobox dengan suggestions memaksa user memilih dari entry yang sudah ada
+- **Normalization:** Backend trim + squeeze whitespace mengurangi variasi yang tidak perlu
+- **Uniqueness:** DB unique index mencegah duplicate entries secara physical
+- **UX:** User tidak perlu type ulang — cukup pilih dari dropdown
+
+### 3.11 Mengapa SkillPicker Perlu Duplicate Prevention
+
+**Alasan:** Tanpa guard, user bisa menambahkan skill yang sama berkali-kali. Ini menghasilkan data yang redundant dan membingungkan saat review portfolio.
+
+**Dampak:**
+- **Data integrity:** Backend validation menolak duplicate skill_label dalam 1 assessment/vacancy
+- **UX:** Skill yang sudah dipilih di-disable di picker — user langsung tahu mana yang sudah ada
+- **Taxonomy linkage:** Fix `skill_id: undefined` → `skill_id: s.skill_id` memastikan referensi ke master data terjaga
+
+### 3.12 Mengapa Assessment List Perlu Colored Icons & Filter
+
+**Alasan:** List assessment yang monoton (semua card terlihat sama) membuat user sulit membedakan status sekilas. Tanpa filter, user harus scroll untuk menemukan assessment yang dicari.
+
+**Dampak:**
+- **Visual scanning:** Colored icons membedakan status dalam < 100ms (green=done, amber=waiting, red=failed)
+- **Efficiency:** Filter pills memungkinkan user fokus pada status tertentu tanpa scroll
+- **Professionalism:** Desain yang polished menunjukkan craftsmanship (Monozukuri)
+
+### 3.13 Mengapa Assessment Detail Perlu Two-Column Layout
+
+**Alasan:** Detail assessment adalah halaman yang paling sering diakses assessor. Single column layout membuat informasi terlalu vertikal — user harus scroll untuk melihat semua data.
+
+**Dampak:**
+- **Information density:** Stats + candidates + sidebar visible dalam satu viewport
+- **Context:** Sidebar memberikan assessment info tanpa navigasi ke tempat lain
+- **Workflow:** Candidate table dengan action buttons mempercepat daily workflow assessor
+
+### 3.14 Mengapa Navbar Perlu Branded Logo
+
+**Alasan:** Logo adalah elemen branding paling prominent. `LayoutDashboard` adalah generic icon yang tidak memberikan identity. 4-square grid adalah brand mark yang unik.
+
+**Dampak:**
+- **Brand recognition:** User langsung mengenali aplikasi dari logo
+- **Professionalism:** Branded logo menunjukkan investment dalam product
+- **Consistency:** Logo yang sama di semua halaman memperkuat identity
+
+### 3.15 Mengapa Form Perlu Card Wrapper & Section Titles
+
+**Alasan:** Forms tanpa visual container terlihat "raw" dan tidak terstruktur. Section titles membantu user memahami flow form (apa yang harus diisi dulu).
+
+**Dampak:**
+- **Visual structure:** Card wrapper memberikan boundary yang jelas antara form dan background
+- **Cognitive load:** Section titles memecah form menjadi chunks yang manageable
+- **Polish:** Detail kecil (hints, dividers, arrow icons) menunjukkan perhatian terhadap UX
+
 ---
 
 ## 4. MANFAAT UNTUK PENGGUNA
@@ -252,6 +390,14 @@ Sebelum polish, frontend memiliki beberapa masalah:
 - **Breadcrumb yang konsisten** → mudah navigasi antar page
 - **Error states yang jelas** → tahu harus apa saat ada error
 - **Portfolio error yang friendly** → tidak panic saat rate limit, tahu ini recoverable
+- **Role title combobox** → pilih dari existing entries, tidak perlu type ulang
+- **Skill duplicate prevention** → tidak ada skill ganda yang membingungkan
+- **Assessment list dengan colored icons** → identifikasi status sekilas tanpa baca text
+- **Filter pills** → fokus pada status tertentu tanpa scroll
+- **Assessment detail two-column** → stats + candidates + sidebar dalam satu viewport
+- **Candidate table dengan avatars** → identifikasi candidate lebih personal
+- **Branded navbar logo** → aplikasi terasa "serius" dan "ready"
+- **Form card wrapper** → form terstruktur dan mudah diikuti
 
 ### Untuk Candidate
 - **Interview page yang polished** → merasa dihargai, bukan "cuma test"
@@ -260,11 +406,12 @@ Sebelum polish, frontend memiliki beberapa masalah:
 - **Connection lost handling** → tahu cara retry, bukan stuck
 
 ### Untuk Developer (Maintainability)
-- **Shared components** → kurang code duplication (Alert, Breadcrumb, EmptyState)
+- **Shared components** → kurang code duplication (Alert, Breadcrumb, EmptyState, Combobox)
 - **Consistent patterns** → mudah add page baru
 - **Design tokens** → mudah ubah warna/font nanti
 - **Semantic variants** → error handling lebih expressif
+- **Data integrity** → backend validation + DB index mencegah data kotor
 
 ---
 
-*Dibuat: 17 Agu 2026. Diperbarui: 18 Agu 2026.*
+*Dibuat: 17 Agu 2026. Diperbarui: 18 Agu 2026 (UI Revamp: P3.16–P3.19).*

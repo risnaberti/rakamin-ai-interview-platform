@@ -24,4 +24,7 @@ export const vacanciesApi = {
     api.put<{ vacancy: Vacancy }>(`/vacancies/${id}`, { vacancy: data }),
 
   delete: (id: number) => api.delete(`/vacancies/${id}`),
+
+  roleTitles: () =>
+    api.get<{ role_titles: string[] }>("/vacancies/role_titles"),
 };

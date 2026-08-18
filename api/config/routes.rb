@@ -48,6 +48,7 @@ Rails.application.routes.draw do
       get  'skill_taxonomies/:skill_id', to: 'skill_taxonomies#show', as: :skill_taxonomy
 
       # Vacancies
+      get "vacancies/role_titles", to: "vacancies#role_titles"
       resources :vacancies
 
       # Portfolios — fit/gap and export

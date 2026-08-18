@@ -311,7 +311,7 @@ class AudioWebSocketMiddleware
     text = text.gsub(/\[SESSION RESUME\][^\n]*/m, '').strip
     text = text.gsub(/\[SISTEM\][^\n]*/m, '').strip
     # Final safety: if the text starts with punctuation or JSON-like patterns, discard the whole turn
-    text = '' if text.match?(/\A[\s]*[,{[]/)
+    text = '' if text.match?(/\A[\s]*[,{\[\]]/)
     text
   end
 
