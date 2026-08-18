@@ -151,7 +151,7 @@ module Api
         when "failed"
           "latest.status = 'ended' AND latest.end_reason = 'error'"
         when "awaiting"
-          "(latest.id IS NULL OR latest.status IN ('active', 'pending'))"
+          "(latest.status IS NULL OR latest.status IN ('active', 'pending'))"
         end
       end
     end

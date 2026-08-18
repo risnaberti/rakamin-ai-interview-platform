@@ -67,23 +67,29 @@ export default function AssessmentListPage() {
   const [roleTitleSearch, setRoleTitleSearch] = useState("");
   const [totalCount, setTotalCount] = useState(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const abortRef = useRef<AbortController | null>(null);
   const navigate = useNavigate();
 
   const fetchAssessments = useCallback(
     async (status: FilterStatus, roleTitle: string) => {
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       setLoading(true);
       setError(false);
       try {
         const params: { status?: string; role_title?: string } = {};
         if (status !== "all") params.status = status;
         if (roleTitle.trim()) params.role_title = roleTitle.trim();
-        const res = await assessmentsApi.list(1, params);
+        const res = await assessmentsApi.list(1, params, controller.signal);
         setAssessments(res.data.assessments);
         setTotalCount(res.data.meta.total_count);
-      } catch {
+      } catch (e: any) {
+        if (e?.code === "ERR_CANCELED") return;
         setError(true);
       } finally {
-        setLoading(false);
+        if (abortRef.current === controller) setLoading(false);
       }
     },
     []
@@ -92,6 +98,10 @@ export default function AssessmentListPage() {
   useEffect(() => {
     fetchAssessments(filter, roleTitleSearch);
   }, [filter, fetchAssessments]);
+
+  useEffect(() => {
+    return () => abortRef.current?.abort();
+  }, []);
 
   const handleRoleTitleChange = (value: string) => {
     setRoleTitleSearch(value);
