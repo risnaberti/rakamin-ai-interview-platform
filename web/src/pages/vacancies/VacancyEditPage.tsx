@@ -183,31 +183,33 @@ export default function VacancyEditPage() {
               {fields.map((field, index) => (
                 <div
                   key={field.id}
-                  className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 last:border-b-0"
+                  className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-4 py-3 border-b border-gray-100 last:border-b-0"
                 >
                   <div className="flex-1 min-w-0">
                     <span className="text-sm font-medium text-gray-900">
                       {watch(`skills.${index}.skill_label`)}
                     </span>
                   </div>
-                  <LevelRadio
-                    value={
-                      watch(`skills.${index}.expected_level`) ?? 3
-                    }
-                    onChange={(v) =>
-                      setValue(
-                        `skills.${index}.expected_level`,
-                        v
-                      )
-                    }
-                  />
-                  <button
-                    type="button"
-                    onClick={() => remove(index)}
-                    className="text-gray-400 hover:text-red-600 transition-colors flex-shrink-0"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
+                  <div className="flex items-center justify-between gap-3">
+                    <LevelRadio
+                      value={
+                        watch(`skills.${index}.expected_level`) ?? 3
+                      }
+                      onChange={(v) =>
+                        setValue(
+                          `skills.${index}.expected_level`,
+                          v
+                        )
+                      }
+                    />
+                    <button
+                      type="button"
+                      onClick={() => remove(index)}
+                      className="text-gray-400 hover:text-red-600 transition-colors flex-shrink-0"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
