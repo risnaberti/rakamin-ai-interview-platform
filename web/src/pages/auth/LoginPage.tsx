@@ -46,9 +46,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 px-4">
       <div className="w-full max-w-sm space-y-6">
-        <div className="border rounded-xl shadow-sm bg-card p-8 space-y-6">
+        <div className="border rounded-xl shadow-sm bg-card p-6 sm:p-8 space-y-6">
           <div className="text-center space-y-2">
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 mx-auto">
               <BrainCircuit className="h-6 w-6 text-primary" />

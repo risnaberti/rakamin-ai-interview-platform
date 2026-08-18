@@ -167,7 +167,7 @@ export default function LiveMonitorPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between flex-wrap gap-3">
         <div className="space-y-1">
           <div className="mb-1">
             <Breadcrumb items={[
