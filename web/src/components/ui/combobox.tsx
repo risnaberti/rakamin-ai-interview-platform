@@ -1,12 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 
 export interface ComboboxOption {
   label: string;
@@ -16,121 +9,124 @@ export interface ComboboxOption {
 interface ComboboxProps {
   options: ComboboxOption[];
   value?: string;
-  onSelect: (value: string) => void;
+  onChange: (value: string) => void;
   placeholder?: string;
-  searchPlaceholder?: string;
-  allowCustom?: boolean;
-  className?: string;
   disabled?: boolean;
+  className?: string;
 }
 
 export function Combobox({
   options,
   value,
-  onSelect,
-  placeholder = "Select...",
-  searchPlaceholder = "Search...",
-  allowCustom = true,
-  className,
+  onChange,
+  placeholder = "Type...",
   disabled = false,
+  className,
 }: ComboboxProps) {
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [highlightIndex, setHighlightIndex] = useState(-1);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
 
   useEffect(() => {
-    if (open) {
-      setTimeout(() => inputRef.current?.focus(), 0);
+    function onDocMouseDown(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
     }
+    document.addEventListener("mousedown", onDocMouseDown);
+    return () => document.removeEventListener("mousedown", onDocMouseDown);
+  }, []);
+
+  useEffect(() => {
+    setHighlightIndex(-1);
   }, [open]);
 
   const filtered = options.filter((opt) =>
-    opt.label.toLowerCase().includes(query.toLowerCase())
+    opt.label.toLowerCase().includes((value ?? "").toLowerCase())
   );
 
-  const showCreate =
-    allowCustom &&
-    query.length > 0 &&
-    !options.some((opt) => opt.label.toLowerCase() === query.toLowerCase());
+  useEffect(() => {
+    if (open && highlightIndex >= 0 && listRef.current) {
+      const el = listRef.current.children[highlightIndex] as HTMLElement | undefined;
+      el?.scrollIntoView({ block: "nearest" });
+    }
+  }, [highlightIndex, open]);
 
   const handleSelect = (val: string) => {
-    onSelect(val);
-    setQuery("");
+    onChange(val);
     setOpen(false);
+    setHighlightIndex(-1);
   };
 
-  const displayLabel = value
-    ? options.find((opt) => opt.value === value)?.label ?? value
-    : null;
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setOpen(true);
+      setHighlightIndex((prev) =>
+        filtered.length === 0 ? -1 : prev < filtered.length - 1 ? prev + 1 : 0
+      );
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlightIndex((prev) =>
+        filtered.length === 0 ? -1 : prev > 0 ? prev - 1 : filtered.length - 1
+      );
+    } else if (e.key === "Enter") {
+      if (open && highlightIndex >= 0 && filtered[highlightIndex]) {
+        e.preventDefault();
+        handleSelect(filtered[highlightIndex].value);
+      }
+    } else if (e.key === "Escape") {
+      setOpen(false);
+    }
+  };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          disabled={disabled}
-          className={cn(
-            "w-full justify-between font-normal",
-            !displayLabel && "text-muted-foreground",
-            className
-          )}
-        >
-          {displayLabel ?? placeholder}
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-        <div className="border-b px-3 py-2">
-          <input
-            ref={inputRef}
-            placeholder={searchPlaceholder}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="flex h-8 w-full rounded-md bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-          />
-        </div>
-        <div className="max-h-64 overflow-y-auto p-1">
-          {filtered.length === 0 && !showCreate ? (
-            <p className="py-3 text-center text-sm text-muted-foreground">
-              No results found.
+    <div ref={containerRef} className={cn("relative", className)}>
+      <input
+        type="text"
+        value={value ?? ""}
+        onChange={(e) => {
+          onChange(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={handleKeyDown}
+        disabled={disabled}
+        placeholder={placeholder}
+        className="flex h-10 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+      />
+      {open && !disabled && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border bg-white shadow-md">
+          {filtered.length === 0 ? (
+            <p className="px-3 py-2 text-sm text-muted-foreground">
+              No suggestions
             </p>
           ) : (
-            <>
-              {filtered.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => handleSelect(opt.value)}
-                  className={cn(
-                    "flex w-full items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
-                    value === opt.value && "bg-accent text-accent-foreground"
-                  )}
-                >
-                  <Check
+            <ul ref={listRef} className="max-h-60 overflow-y-auto py-1">
+              {filtered.map((opt, index) => (
+                <li key={opt.value}>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      handleSelect(opt.value);
+                    }}
+                    onMouseEnter={() => setHighlightIndex(index)}
                     className={cn(
-                      "mr-2 h-4 w-4 shrink-0",
-                      value === opt.value ? "opacity-100" : "opacity-0"
+                      "flex w-full items-center px-3 py-1.5 text-sm text-left hover:bg-accent hover:text-accent-foreground",
+                      (value === opt.value || index === highlightIndex) &&
+                        "bg-accent text-accent-foreground"
                     )}
-                  />
-                  {opt.label}
-                </button>
+                  >
+                    {opt.label}
+                  </button>
+                </li>
               ))}
-              {showCreate && (
-                <button
-                  type="button"
-                  onClick={() => handleSelect(query)}
-                  className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground text-muted-foreground"
-                >
-                  <span className="mr-2 text-xs">+</span>
-                  Use &quot;{query}&quot;
-                </button>
-              )}
-            </>
+            </ul>
           )}
         </div>
-      </PopoverContent>
-    </Popover>
+      )}
+    </div>
   );
 }

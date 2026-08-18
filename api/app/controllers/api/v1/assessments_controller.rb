@@ -7,6 +7,18 @@ module Api
 
       before_action :set_assessment, only: %i[show update destroy]
 
+      # GET /api/v1/assessments/role_titles
+      def role_titles
+        titles = Assessment
+          .select(:name)
+          .distinct
+          .order(:name)
+          .limit(50)
+          .pluck(:name)
+
+        json_response(role_titles: titles)
+      end
+
       # GET /api/v1/assessments
       def index
         scope = Assessment.includes(:sessions).order(created_at: :desc)

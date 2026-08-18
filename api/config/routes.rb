@@ -17,6 +17,7 @@ Rails.application.routes.draw do
       }
 
       # Assessments
+      get "assessments/role_titles", to: "assessments#role_titles"
       resources :assessments do
         resources :sessions, only: %i[index create]
       end

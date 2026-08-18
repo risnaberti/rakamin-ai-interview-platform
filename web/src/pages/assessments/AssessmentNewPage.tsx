@@ -31,7 +31,6 @@ import SkillPicker from "@/components/assessment/SkillPicker";
 import { Plus, Loader2, X } from "lucide-react";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { assessmentsApi } from "@/services/assessments";
-import { vacanciesApi } from "@/services/vacancies";
 import { TIME_LIMIT_OPTIONS } from "@/utils/constants";
 import type { AssessmentSkill } from "@/types";
 
@@ -74,7 +73,7 @@ export default function AssessmentNewPage() {
   });
 
   useEffect(() => {
-    vacanciesApi
+    assessmentsApi
       .roleTitles()
       .then((res) => {
         const titles = (res.data.role_titles ?? []).map((t) => ({
@@ -169,12 +168,10 @@ export default function AssessmentNewPage() {
             <Combobox
               options={roleTitleOptions}
               value={watch("name")}
-              onSelect={(val) =>
+              onChange={(val) =>
                 setValue("name", val, { shouldValidate: true })
               }
               placeholder="Select or type a role title..."
-              searchPlaceholder="Search role titles..."
-              allowCustom
             />
             <input
               type="hidden"

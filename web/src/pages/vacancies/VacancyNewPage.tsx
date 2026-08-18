@@ -108,12 +108,10 @@ export default function VacancyNewPage() {
             <Combobox
               options={roleTitleOptions}
               value={watch("role_title")}
-              onSelect={(val) =>
+              onChange={(val) =>
                 setValue("role_title", val, { shouldValidate: true })
               }
               placeholder="Select or type a role title..."
-              searchPlaceholder="Search role titles..."
-              allowCustom
             />
             <input
               type="hidden"
