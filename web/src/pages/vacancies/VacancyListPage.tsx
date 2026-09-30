@@ -117,7 +117,7 @@ export default function VacancyListPage() {
             return (
               <div
                 key={v.id}
-                onClick={() => navigate(`/vacancies/${v.id}/edit`)}
+                onClick={() => navigate(`/vacancies/${v.id}`)}
                 className="flex items-center gap-3.5 bg-white border border-gray-200 rounded-xl px-4 py-3.5 cursor-pointer hover:border-gray-300 hover:shadow-sm transition-all"
               >
                 <div
