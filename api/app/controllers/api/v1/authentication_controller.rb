@@ -10,16 +10,16 @@ module Api
         user = User.find_by(email: params[:email].to_s.downcase)
 
         if user.nil?
-          return json_error('Email not registered', :unauthorized)
+          return json_error('No account found with that email address.', :unauthorized)
         end
 
-        return json_error('Wrong password', :unauthorized) unless user.authenticate(params[:password])
-        return json_error('Account is not authorized to log in', :unauthorized) unless User::ROLES.include?(user.role)
+        return json_error('Incorrect password. Please try again.', :unauthorized) unless user.authenticate(params[:password])
+        return json_error('Your account does not have access.', :unauthorized) unless User::ROLES.include?(user.role)
 
         organization = resolve_organization_by_host
-        return json_error('Tenant not recognized', :unauthorized) unless organization
+        return json_error('Invalid workspace URL. Check your link and try again.', :unauthorized) unless organization
         unless user.tenant_id == organization.id
-          return json_error('Account is not authorized for this tenant', :unauthorized)
+          return json_error('Your account is not registered here.', :unauthorized)
         end
 
         token = JsonWebToken.encode({ user_id: user.id, role: user.role, scheme: organization.scheme })
