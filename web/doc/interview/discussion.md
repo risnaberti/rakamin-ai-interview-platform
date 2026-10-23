@@ -13,7 +13,7 @@ We would like to invite you to the next stage of our selection process: *Group D
 *Your Schedule:*
 📅 Date: Friday, 2 Oct 2026 (Batch 2)
 ⏰ Time: 3:30 – 5:30pm WIB
-📍 Venue: 
+📍 Venue: meet.google.com/xqw-spta-nav
 
 Candidates who pass this Group Discussion stage will proceed to the *next stage*, which is the *User Interview*.
 
