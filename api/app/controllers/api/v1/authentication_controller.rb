@@ -9,11 +9,10 @@ module Api
       def authenticate
         user = User.find_by(email: params[:email].to_s.downcase)
 
-        if user.nil?
-          return json_error('No account found with that email address.', :unauthorized)
+        # ponytail: user&.authenticate susceptible to timing probing; use authenticate_by when on Rails 7.1+
+        unless user&.authenticate(params[:password])
+          return json_error('Invalid email or password.', :unauthorized)
         end
-
-        return json_error('Incorrect password. Please try again.', :unauthorized) unless user.authenticate(params[:password])
         return json_error('Your account does not have access.', :unauthorized) unless User::ROLES.include?(user.role)
 
         organization = resolve_organization_by_host
