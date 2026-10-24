@@ -145,11 +145,13 @@ module Api
         status = query_params[:status].to_s.downcase
         return scope unless %w[completed awaiting failed].include?(status)
 
+        # ponytail: lateral join raw SQL; uses Session.table_name with tenant_id matching instead of hardcoded schema
         scope.joins(<<-SQL.squish)
           LEFT JOIN LATERAL (
             SELECT s.status, s.end_reason
-            FROM ai_interview.sessions s
+            FROM #{Session.table_name} s
             WHERE s.assessment_id = assessments.id
+              AND s.tenant_id = assessments.tenant_id
             ORDER BY s.created_at DESC
             LIMIT 1
           ) latest ON TRUE
